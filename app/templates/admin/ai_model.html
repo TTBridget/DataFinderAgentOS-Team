@@ -518,11 +518,6 @@
 <script>
 var currentChatModelId = null;
 
-// 从 URL 读取当前查询参数，避免在 <script> 中直接嵌入 json_encode 导致 HTML 实体转义问题
-function getQueryParam(name){
-    return new URLSearchParams(window.location.search).get(name) || '';
-}
-
 layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
     var layer = layui.layer;
     var form = layui.form;
@@ -533,7 +528,7 @@ layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
     layer.config({
         skin: 'layui-layer-molv' // 使用内置稍微暗点的皮肤作为基础
     });
-
+    
     // 分页
     laypage.render({
         elem: 'pagination',
@@ -543,7 +538,7 @@ layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
         theme: '#2563eb',
         jump: function(obj, first){
             if(!first){
-                window.location.href = '?page=' + obj.curr + '&search=' + encodeURIComponent(getQueryParam('search')) + '&model_type=' + encodeURIComponent(getQueryParam('model_type'));
+                window.location.href = '?page=' + obj.curr + '&search=' + encodeURIComponent({{ json_encode(search) }}) + '&model_type=' + encodeURIComponent({{ json_encode(model_type) }});
             }
         }
     });
@@ -559,15 +554,15 @@ layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
 
 function searchModels(){
     var search = layui.jquery('#searchInput').val();
-    window.location.href = '?search=' + encodeURIComponent(search) + '&model_type=' + encodeURIComponent(getQueryParam('model_type'));
+    window.location.href = '?search=' + encodeURIComponent(search) + '&model_type=' + encodeURIComponent({{ json_encode(model_type) }});
 }
 
 function clearSearch(){
-    window.location.href = '?model_type=' + encodeURIComponent(getQueryParam('model_type'));
+    window.location.href = '?model_type=' + encodeURIComponent({{ json_encode(model_type) }});
 }
 
 function filterType(type){
-    window.location.href = '?search=' + encodeURIComponent(getQueryParam('search')) + '&model_type=' + encodeURIComponent(type);
+    window.location.href = '?search=' + encodeURIComponent({{ json_encode(search) }}) + '&model_type=' + encodeURIComponent(type);
 }
 
 function openModelModal(){
