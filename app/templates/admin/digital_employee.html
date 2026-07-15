@@ -1,0 +1,581 @@
+{% extends "base.html" %}
+
+{% block body %}
+<style>
+/* 防止弹窗关闭后模态框内容残留在页面底部 */
+#employeeModal { display: none !important; }
+.layui-layer-content #employeeModal { display: block !important; }
+</style>
+<div class="layui-body-content" style="padding: 20px;">
+    <div class="layui-card">
+        <div class="layui-card-header">数字员工</div>
+        <div class="layui-card-body">
+            <div class="layui-form-item" style="margin-bottom: 20px;">
+                <div class="layui-inline">
+                    <input type="text" id="searchInput" placeholder="搜索员工名称或描述" class="layui-input" style="width: 300px;" value="{{ search }}">
+                </div>
+                <button class="layui-btn" onclick="searchEmployees()"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+                <a href="/admin/digital" class="layui-btn layui-btn-primary">重置</a>
+                <button class="layui-btn layui-btn-normal" onclick="openAddModal()"><i class="layui-icon layui-icon-add-1"></i> 新增数字员工</button>
+            </div>
+            
+            <table class="layui-table" lay-skin="line">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th>员工名称</th>
+                        <th>类型</th>
+                        <th>描述</th>
+                        <th style="width: 120px;">排序</th>
+                        <th style="width: 100px;">状态</th>
+                        <th style="width: 280px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employees %}
+                    <tr>
+                        <td>{{ emp['id'] }}</td>
+                        <td>@{{ emp['name'] }}</td>
+                        <td>
+                            {% if emp['type'] == 'llm' %}
+                            <span class="layui-badge layui-bg-blue">LLM 员工</span>
+                            {% else %}
+                            <span class="layui-badge layui-bg-orange">API 员工</span>
+                            {% end %}
+                        </td>
+                        <td>{{ emp['description'] }}</td>
+                        <td>{{ emp['sort_order'] }}</td>
+                        <td>
+                            {% if emp['is_enabled'] == 1 %}
+                            <span class="layui-badge layui-bg-green">启用</span>
+                            {% else %}
+                            <span class="layui-badge layui-bg-gray">禁用</span>
+                            {% end %}
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="openEditModal({{ emp['id'] }})">编辑</button>
+                            <button class="layui-btn layui-btn-xs" onclick="viewDetail({{ emp['id'] }})">详情</button>
+                            {% if emp['type'] == 'api' %}
+                            <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="previewApi({{ emp['id'] }})">预览</button>
+                            {% end %}
+                            {% if emp['is_enabled'] == 1 %}
+                            <button class="layui-btn layui-btn-xs layui-btn-warm" onclick="toggleEmployee({{ emp['id'] }}, 0)">禁用</button>
+                            {% else %}
+                            <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="toggleEmployee({{ emp['id'] }}, 1)">启用</button>
+                            {% end %}
+                            <button class="layui-btn layui-btn-xs layui-btn-danger" onclick="deleteEmployee({{ emp['id'] }})">删除</button>
+                        </td>
+                    </tr>
+                    {% end %}
+                    {% if not employees %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #999;">暂无数字员工，请点击上方“新增”按钮添加</td>
+                    </tr>
+                    {% end %}
+                </tbody>
+            </table>
+            
+            <div id="pagination"></div>
+        </div>
+    </div>
+</div>
+
+<div id="employeeModal" style="display: none; padding: 20px;">
+    <form class="layui-form" lay-filter="employeeForm" id="employeeForm">
+        <input type="hidden" name="action" id="action" value="add">
+        <input type="hidden" name="id" id="empId">
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label">员工名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" id="empName" required lay-verify="required" class="layui-input">
+            </div>
+        </div>
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label">员工类型</label>
+            <div class="layui-input-block">
+                <input type="radio" name="type" value="llm" title="LLM 员工" checked lay-filter="typeRadio">
+                <input type="radio" name="type" value="api" title="API 员工" lay-filter="typeRadio">
+            </div>
+        </div>
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label">描述</label>
+            <div class="layui-input-block">
+                <textarea name="description" id="empDesc" class="layui-textarea" rows="2"></textarea>
+            </div>
+        </div>
+        
+        <div id="llmFields">
+            <div class="layui-form-item">
+                <label class="layui-form-label">选择模型</label>
+                <div class="layui-input-block">
+                    <select name="model_id" id="modelId">
+                        <option value="">使用系统默认模型</option>
+                        {% for model in models %}
+                        <option value="{{ model['id'] }}">{{ model['name'] }}</option>
+                        {% end %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="layui-form-item">
+                <label class="layui-form-label">System Prompt</label>
+                <div class="layui-input-block">
+                    <textarea name="system_prompt" id="systemPrompt" class="layui-textarea" rows="4"></textarea>
+                </div>
+            </div>
+            
+            <div class="layui-form-item">
+                <label class="layui-form-label">Prompt 文件</label>
+                <div class="layui-input-block">
+                    <input type="file" name="nd_files" id="ndFiles" multiple accept=".nd" class="layui-input" style="padding-top: 6px;">
+                    <div id="ndFileList" class="layui-form-mid" style="margin-top: 8px; color: #666;"></div>
+                    <div class="layui-form-mid layui-word-aux">支持上传一个或多个 .nd 文件，文件内容会在对话时自动补充到 System Prompt 中</div>
+                </div>
+            </div>
+            
+            <div class="layui-form-item" pane>
+                <label class="layui-form-label">功能增强</label>
+                <div class="layui-input-block">
+                    <input type="checkbox" name="use_skills" value="1" title="启用技能" lay-skin="primary">
+                    <input type="checkbox" name="use_crawl4ai" value="1" title="启用网页抓取" lay-skin="primary">
+                </div>
+            </div>
+        </div>
+        
+        <div id="apiFields" style="display: none;">
+            <div class="layui-form-item">
+                <label class="layui-form-label">API URL</label>
+                <div class="layui-input-block">
+                    <input type="text" name="api_url" id="apiUrl" placeholder="https://example.com/api" class="layui-input">
+                </div>
+            </div>
+            
+            <div class="layui-form-item">
+                <label class="layui-form-label">请求方法</label>
+                <div class="layui-input-block">
+                    <select name="api_method" id="apiMethod">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="layui-form-item">
+                <label class="layui-form-label">请求头（JSON）</label>
+                <div class="layui-input-block">
+                    <textarea name="api_headers" id="apiHeaders" class="layui-textarea" rows="3" placeholder='{"Content-Type": "application/json"}'></textarea>
+                </div>
+            </div>
+            
+            <div class="layui-form-item">
+                <label class="layui-form-label">请求参数（JSON）</label>
+                <div class="layui-input-block">
+                    <textarea name="api_params" id="apiParams" class="layui-textarea" rows="3" placeholder='{"param": "value"}'></textarea>
+                </div>
+            </div>
+            
+            <div class="layui-form-item">
+                <label class="layui-form-label">卡片类型</label>
+                <div class="layui-input-block">
+                    <select name="card_type" id="cardType">
+                        <option value="">无（纯文本）</option>
+                        <option value="weather">天气卡片</option>
+                        <option value="json">JSON 数据卡片</option>
+                        <option value="table">表格卡片</option>
+                        <option value="html">HTML 卡片</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label">排序</label>
+            <div class="layui-input-block">
+                <input type="number" name="sort_order" id="sortOrder" value="0" class="layui-input">
+            </div>
+        </div>
+    </form>
+</div>
+
+<div id="detailModal" style="display: none; padding: 20px;">
+    <div id="detailContent"></div>
+</div>
+
+<div id="previewModal" style="display: none; padding: 20px;">
+    <div class="layui-form-item">
+        <label class="layui-form-label">预览参数</label>
+        <div class="layui-input-block">
+            <textarea id="previewParams" class="layui-textarea" rows="3" placeholder='{"param": "value"}'></textarea>
+        </div>
+    </div>
+    <div id="previewResult" style="display: none;">
+        <div class="layui-form-item">
+            <label class="layui-form-label">预览结果</label>
+            <div class="layui-input-block">
+                <pre id="previewOutput" style="background: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 400px; overflow-y: auto;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var $, layer, form, laypage;
+layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
+    laypage = lp;
+    layer = ly;
+    form = fm;
+    $ = jq;
+    
+    laypage.render({
+        elem: 'pagination',
+        count: {{ total }},
+        limit: 20,
+        curr: {{ page }},
+        layout: ['count', 'prev', 'page', 'next', 'skip'],
+        jump: function(obj, first){
+            if(!first){
+                var search = document.getElementById('searchInput').value;
+                window.location.href = '/admin/digital?page=' + obj.curr + '&search=' + encodeURIComponent(search);
+            }
+        }
+    });
+    
+    form.on('radio(typeRadio)', function(data){
+        var $form = $(data.elem).closest('.layui-form');
+        if(data.value == 'llm'){
+            $form.find('#llmFields').show();
+            $form.find('#apiFields').hide();
+        } else {
+            $form.find('#llmFields').hide();
+            $form.find('#apiFields').show();
+        }
+    });
+    
+    window.searchEmployees = function(){
+        var search = document.getElementById('searchInput').value;
+        window.location.href = '/admin/digital?page=1&search=' + encodeURIComponent(search);
+    };
+    
+    function resetCheckboxes($container){
+        $container.find('input[name="use_skills"]').prop('checked', false);
+        $container.find('input[name="use_crawl4ai"]').prop('checked', false);
+    }
+    
+    function initEmployeeForm($form, emp){
+        var isEdit = !!emp;
+        $form.find('#action').val(isEdit ? 'edit' : 'add');
+        $form.find('#empId').val(isEdit ? emp.id : '');
+        $form.find('#empName').val(isEdit ? emp.name : '');
+        $form.find('#empDesc').val(isEdit ? (emp.description || '') : '');
+        $form.find('#modelId').val(isEdit ? (emp.model_id || '') : '');
+        $form.find('#systemPrompt').val(isEdit ? (emp.system_prompt || '') : '');
+        $form.find('#apiUrl').val(isEdit ? (emp.api_url || '') : '');
+        $form.find('#apiMethod').val(isEdit ? (emp.api_method || 'GET') : 'GET');
+        $form.find('#apiHeaders').val(isEdit ? (emp.api_headers || '') : '');
+        $form.find('#apiParams').val(isEdit ? (emp.api_params || '') : '');
+        $form.find('#cardType').val(isEdit ? (emp.card_type || '') : '');
+        $form.find('#sortOrder').val(isEdit ? (emp.sort_order || 0) : '0');
+        $form.find('#ndFiles').val('');
+        
+        var type = isEdit ? emp.type : 'llm';
+        $form.find('input[name="type"][value="' + type + '"]').prop('checked', true);
+        if(type == 'llm'){
+            $form.find('#llmFields').show();
+            $form.find('#apiFields').hide();
+        } else {
+            $form.find('#llmFields').hide();
+            $form.find('#apiFields').show();
+        }
+        
+        resetCheckboxes($form);
+        if(isEdit && emp.use_skills == 1){
+            $form.find('input[name="use_skills"]').prop('checked', true);
+        }
+        if(isEdit && emp.use_crawl4ai == 1){
+            $form.find('input[name="use_crawl4ai"]').prop('checked', true);
+        }
+        
+        // 显示已上传的 .nd 文件
+        var fileListHtml = '';
+        if(isEdit && emp.nd_files && emp.nd_files.length > 0){
+            fileListHtml = '<i class="layui-icon layui-icon-file"></i> 已上传：' + emp.nd_files.join('， ');
+        }
+        $form.find('#ndFileList').html(fileListHtml);
+    }
+    
+    window.openAddModal = function(){
+        layer.open({
+            type: 1,
+            title: '新增数字员工',
+            content: $('#employeeModal').html(),
+            area: ['600px', '700px'],
+            closeBtn: 1,
+            shadeClose: true,
+            btn: ['保存', '取消'],
+            success: function(layero, index){
+                var $form = layero.find('#employeeForm');
+                initEmployeeForm($form);
+                form.render();
+                // 监听文件选择，显示本次待上传的文件名
+                $form.find('#ndFiles').on('change', function(){
+                    var names = [];
+                    for(var i = 0; i < this.files.length; i++){
+                        names.push(this.files[i].name);
+                    }
+                    var $list = $form.find('#ndFileList');
+                    var existing = $list.html();
+                    if(names.length > 0){
+                        var newHtml = '<i class="layui-icon layui-icon-upload-circle"></i> 待上传：' + names.join('， ');
+                        $list.html(existing ? existing + '<br>' + newHtml : newHtml);
+                    }
+                });
+            },
+            yes: function(index, layero){
+                submitEmployeeForm(index, layero);
+            },
+            btn2: function(index){
+                layer.close(index);
+            }
+        });
+    };
+    
+    window.openEditModal = function(id){
+        $.post('/admin/digital', {
+            action: 'get_detail',
+            id: id,
+            _xsrf: getCookie('_xsrf')
+        }, function(res){
+            if(res.code == 0){
+                var emp = res.data;
+                layer.open({
+                    type: 1,
+                    title: '编辑数字员工',
+                    content: $('#employeeModal').html(),
+                    area: ['600px', '700px'],
+                    closeBtn: 1,
+                    shadeClose: true,
+                    btn: ['保存', '取消'],
+                    success: function(layero, index){
+                        var $form = layero.find('#employeeForm');
+                        initEmployeeForm($form, emp);
+                        form.render();
+                        // 监听文件选择，显示本次待上传的文件名
+                        $form.find('#ndFiles').on('change', function(){
+                            var names = [];
+                            for(var i = 0; i < this.files.length; i++){
+                                names.push(this.files[i].name);
+                            }
+                            var $list = $form.find('#ndFileList');
+                            var existing = $list.html();
+                            if(names.length > 0){
+                                var newHtml = '<i class="layui-icon layui-icon-upload-circle"></i> 待上传：' + names.join('， ');
+                                $list.html(existing ? existing + '<br>' + newHtml : newHtml);
+                            }
+                        });
+                    },
+                    yes: function(index, layero){
+                        submitEmployeeForm(index, layero);
+                    },
+                    btn2: function(index){
+                        layer.close(index);
+                    }
+                });
+            } else {
+                layer.msg(res.msg || '获取数据失败', {icon: 2});
+            }
+        }).fail(function(xhr, status, error){
+            var msg = '请求失败';
+            if(xhr.status) msg += ' (HTTP ' + xhr.status + ')';
+            if(error) msg += ': ' + error;
+            if(xhr.status === 403) msg += '，可能是登录会话已过期，请重新登录';
+            layer.msg(msg, {icon: 2});
+        });
+    };
+    
+    window.viewDetail = function(id){
+        $.post('/admin/digital', {
+            action: 'get_detail',
+            id: id,
+            _xsrf: getCookie('_xsrf')
+        }, function(res){
+            if(res.code == 0){
+                var emp = res.data;
+                var html = '<div class="layui-form" style="padding: 20px;">';
+                html += '<div class="layui-form-item"><label class="layui-form-label">员工名称</label><div class="layui-input-block"><span class="layui-form-mid">@' + emp.name + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label">员工类型</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.type == 'llm' ? 'LLM 员工' : 'API 员工') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label">描述</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.description || '-') + '</span></div></div>';
+                
+                if(emp.type == 'llm'){
+                    html += '<div class="layui-form-item"><label class="layui-form-label">关联模型</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.model_name || '系统默认模型') + '</span></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">System Prompt</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">' + (emp.system_prompt || '-') + '</pre></div></div>';
+                    var ndFiles = emp.nd_files && emp.nd_files.length > 0 ? emp.nd_files.join('， ') : '-';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">Prompt 文件</label><div class="layui-input-block"><span class="layui-form-mid">' + ndFiles + '</span></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">功能增强</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.use_skills == 1 ? '✓ 启用技能 ' : '') + (emp.use_crawl4ai == 1 ? '✓ 启用网页抓取' : '') + '</span></div></div>';
+                } else {
+                    html += '<div class="layui-form-item"><label class="layui-form-label">API URL</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.api_url || '-') + '</span></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">请求方法</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.api_method || 'GET') + '</span></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">请求头</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">' + (emp.api_headers || '-') + '</pre></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">请求参数</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">' + (emp.api_params || '-') + '</pre></div></div>';
+                    var cardTypeMap = {'': '无（纯文本）', 'weather': '天气卡片', 'json': 'JSON 数据卡片', 'table': '表格卡片', 'html': 'HTML 卡片'};
+                    html += '<div class="layui-form-item"><label class="layui-form-label">卡片类型</label><div class="layui-input-block"><span class="layui-form-mid">' + (cardTypeMap[emp.card_type] || '无（纯文本）') + '</span></div></div>';
+                }
+                
+                html += '<div class="layui-form-item"><label class="layui-form-label">状态</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.is_enabled == 1 ? '<span style="color: green;">启用</span>' : '<span style="color: #999;">禁用</span>') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label">排序</label><div class="layui-input-block"><span class="layui-form-mid">' + emp.sort_order + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label">创建时间</label><div class="layui-input-block"><span class="layui-form-mid">' + emp.created_at + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label">更新时间</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.updated_at || '-') + '</span></div></div>';
+                html += '</div>';
+                
+                layer.open({
+                    type: 1,
+                    title: '数字员工详情',
+                    content: html,
+                    area: ['500px', '600px'],
+                    closeBtn: 1,
+                    shadeClose: true,
+                    btn: ['关闭']
+                });
+            } else {
+                layer.msg(res.msg || '获取数据失败', {icon: 2});
+            }
+        });
+    };
+    
+    window.previewApi = function(id){
+        var previewHtml = '<div style="padding: 20px;">' +
+            '<div class="layui-form-item"><label class="layui-form-label">预览参数</label><div class="layui-input-block"><textarea id="previewParams" class="layui-textarea" rows="3" placeholder=\'{"param": "value"}\'></textarea></div></div>' +
+            '<div id="previewResult" style="display: none;"><div class="layui-form-item"><label class="layui-form-label">预览结果</label><div class="layui-input-block"><pre id="previewOutput" style="background: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 400px; overflow-y: auto;"></pre></div></div></div>' +
+            '</div>';
+        
+        layer.open({
+            type: 1,
+            title: 'API 预览',
+            content: previewHtml,
+            area: ['600px', '500px'],
+            closeBtn: 1,
+            shadeClose: true,
+            btn: ['执行预览', '关闭'],
+            success: function(layero, index){
+                layero.find('#previewParams').val('');
+                layero.find('#previewResult').hide();
+            },
+            yes: function(index, layero){
+                $.post('/admin/digital', {
+                    action: 'preview_api',
+                    id: id,
+                    _xsrf: getCookie('_xsrf')
+                }, function(res){
+                    if(res.code == 0){
+                        layero.find('#previewOutput').text(JSON.stringify(res.data, null, 2));
+                        layero.find('#previewResult').show();
+                    } else {
+                        layer.msg(res.msg || '预览失败', {icon: 2});
+                    }
+                });
+            }
+        });
+    };
+    
+    window.toggleEmployee = function(id, isEnabled){
+        layer.confirm('确定要' + (isEnabled == 1 ? '启用' : '禁用') + '该员工吗？', function(index){
+            $.post('/admin/digital', {
+                action: 'toggle',
+                id: id,
+                is_enabled: isEnabled,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code == 0){
+                    layer.msg('操作成功');
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg || '操作失败', {icon:2});
+                }
+            });
+            layer.close(index);
+        });
+    };
+    
+    window.deleteEmployee = function(id){
+        layer.confirm('确定要删除该员工吗？', function(index){
+            $.post('/admin/digital', {
+                action: 'delete',
+                id: id,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code == 0){
+                    layer.msg('删除成功');
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg || '删除失败', {icon:2});
+                }
+            });
+            layer.close(index);
+        });
+    };
+    
+    function submitEmployeeForm(index, layero){
+        var $form = layero.find('#employeeForm');
+        var formData = new FormData();
+        formData.append('action', $form.find('#action').val());
+        formData.append('id', $form.find('#empId').val());
+        formData.append('name', $form.find('#empName').val());
+        formData.append('description', $form.find('#empDesc').val());
+        formData.append('type', $form.find('input[name="type"]:checked').val());
+        formData.append('model_id', $form.find('#modelId').val());
+        formData.append('system_prompt', $form.find('#systemPrompt').val());
+        formData.append('use_skills', $form.find('input[name="use_skills"]:checked').val() || 0);
+        formData.append('use_crawl4ai', $form.find('input[name="use_crawl4ai"]:checked').val() || 0);
+        formData.append('api_url', $form.find('#apiUrl').val());
+        formData.append('api_method', $form.find('#apiMethod').val());
+        formData.append('api_headers', $form.find('#apiHeaders').val());
+        formData.append('api_params', $form.find('#apiParams').val());
+        formData.append('sort_order', $form.find('#sortOrder').val());
+        formData.append('_xsrf', getCookie('_xsrf'));
+        
+        // 追加 .nd 文件
+        var fileInput = $form.find('#ndFiles')[0];
+        if(fileInput && fileInput.files){
+            for(var i = 0; i < fileInput.files.length; i++){
+                var file = fileInput.files[i];
+                if(file.name.toLowerCase().endsWith('.nd')){
+                    formData.append('nd_files', file);
+                }
+            }
+        }
+        
+        if(!$form.find('#empName').val()){
+            layer.msg('请填写员工名称');
+            return;
+        }
+        
+        $.ajax({
+            url: '/admin/digital',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(res){
+                if(res.code == 0){
+                    layer.close(index);
+                    layer.msg('操作成功');
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg || '操作失败', {icon: 2});
+                }
+            },
+            error: function(xhr, status, error){
+                var msg = '请求失败';
+                if(xhr.status) msg += ' (HTTP ' + xhr.status + ')';
+                if(error) msg += ': ' + error;
+                layer.msg(msg, {icon: 2});
+            }
+        });
+    }
+});
+</script>
+{% end %}

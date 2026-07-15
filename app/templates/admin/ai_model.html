@@ -1,0 +1,796 @@
+{% extends "base.html" %}
+
+{% block body %}
+<style>
+/* 沉浸式科技风格主题 */
+.ai-container {
+    padding: 24px;
+    min-height: calc(100vh - 64px);
+    background: #0f172a;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(22, 93, 255, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(14, 59, 161, 0.15) 0px, transparent 50%);
+    color: #e2e8f0;
+}
+
+.ai-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 16px 24px;
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(51, 65, 85, 0.5);
+    border-radius: 12px;
+    backdrop-filter: blur(12px);
+}
+
+.ai-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ai-title i {
+    font-size: 24px;
+    color: #3b82f6;
+}
+
+/* 玻璃拟态卡片 */
+.ai-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.ai-card-default-badge {
+    position: absolute;
+    top: 12px;
+    right: -30px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 4px 30px;
+    font-size: 12px;
+    font-weight: bold;
+    transform: rotate(45deg);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.ai-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.ai-model-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #f8fafc;
+    margin-bottom: 4px;
+}
+
+.ai-model-provider {
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+.ai-type-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.ai-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 8px;
+}
+
+.ai-stat-item {
+    flex: 1;
+}
+
+.ai-stat-label {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 4px;
+}
+
+.ai-stat-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+    font-family: monospace;
+}
+
+.ai-actions {
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid rgba(51, 65, 85, 0.5);
+    padding-top: 16px;
+}
+
+/* 炫酷按钮 */
+.btn-cyber {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 16px;
+    height: 36px;
+    line-height: 36px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-cyber:hover {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    color: white;
+}
+
+.btn-ghost {
+    background: rgba(51, 65, 85, 0.5);
+    color: #cbd5e1;
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    border-radius: 6px;
+    padding: 0 16px;
+    height: 36px;
+    line-height: 34px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-ghost:hover {
+    background: rgba(71, 85, 105, 0.8);
+    color: white;
+}
+
+/* 对话框样式 */
+#chatContainer {
+    display: flex;
+    flex-direction: column;
+    height: 500px;
+    background: #0f172a;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#chatMessages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.msg-bubble {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.msg-user {
+    align-self: flex-end;
+    background: #2563eb;
+    color: white;
+    border-bottom-right-radius: 2px;
+}
+
+.msg-ai {
+    align-self: flex-start;
+    background: #1e293b;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+    border-bottom-left-radius: 2px;
+}
+
+.chat-input-area {
+    padding: 16px;
+    background: #1e293b;
+    border-top: 1px solid #334155;
+    display: flex;
+    gap: 12px;
+}
+
+.chat-input {
+    flex: 1;
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: white;
+    border-radius: 6px;
+    padding: 8px 12px;
+    resize: none;
+    outline: none;
+}
+
+.chat-input:focus {
+    border-color: #3b82f6;
+}
+
+/* 表单暗色主题 */
+.layui-layer-page .layui-layer-content {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+.layui-layer-title {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    border-bottom: 1px solid #334155 !important;
+}
+.dark-form .layui-form-label {
+    color: #cbd5e1;
+}
+.dark-form .layui-input, .dark-form .layui-textarea, .dark-form .layui-select {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #f8fafc;
+}
+.dark-form .layui-input:focus, .dark-form .layui-textarea:focus {
+    border-color: #3b82f6 !important;
+}
+
+/* 分页暗色主题 */
+.layui-laypage a, .layui-laypage span {
+    background-color: rgba(30, 41, 59, 0.6) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+}
+.layui-laypage .layui-laypage-curr .layui-laypage-em {
+    background-color: #2563eb !important;
+}
+.layui-laypage input, .layui-laypage button {
+    background-color: rgba(30, 41, 59, 0.6) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+/* 分类按钮 */
+.category-filters {
+    margin-bottom: 24px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.category-btn {
+    background: rgba(30, 41, 59, 0.6);
+    color: #94a3b8;
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    padding: 6px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+.category-btn:hover {
+    color: #e2e8f0;
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+.category-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}
+</style>
+
+<div class="ai-container">
+    <div class="ai-header">
+        <div class="ai-title">
+            <i class="layui-icon layui-icon-util"></i>
+            模型引擎管理
+        </div>
+        <div class="ai-header-actions">
+            <div class="layui-inline" style="margin-right: 16px;">
+                <input type="text" id="searchInput" value="{{ search }}" placeholder="搜索模型名称/提供商" class="layui-input" style="background: rgba(15,23,42,0.6); border: 1px solid rgba(51,65,85,0.8); color: white; border-radius: 6px; width: 250px;">
+            </div>
+            <button class="btn-ghost" onclick="searchModels()"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+            {% if search %}
+            <button class="btn-ghost" onclick="clearSearch()" style="margin-left: 10px;"><i class="layui-icon layui-icon-return"></i> 返回全部模型</button>
+            {% end %}
+            <button class="btn-cyber" onclick="openModelModal()" style="margin-left: 10px;"><i class="layui-icon layui-icon-add-1"></i> 接入新模型</button>
+        </div>
+    </div>
+
+    <div class="category-filters">
+        <button class="category-btn {% if not model_type %}active{% end %}" onclick="filterType('')">全部分类</button>
+        <button class="category-btn {% if model_type == 'text' %}active{% end %}" onclick="filterType('text')">文本 (Text)</button>
+        <button class="category-btn {% if model_type == 'image' %}active{% end %}" onclick="filterType('image')">图像 (Image)</button>
+        <button class="category-btn {% if model_type == 'audio' %}active{% end %}" onclick="filterType('audio')">音频 (Audio)</button>
+        <button class="category-btn {% if model_type == 'video' %}active{% end %}" onclick="filterType('video')">视频 (Video)</button>
+        <button class="category-btn {% if model_type == 'multimodal' %}active{% end %}" onclick="filterType('multimodal')">多模态 (Multimodal)</button>
+        <button class="category-btn {% if model_type == 'embedding' %}active{% end %}" onclick="filterType('embedding')">嵌入 (Embedding)</button>
+        
+        <!-- 将分页放在模型列表上方右侧 -->
+        <div id="pagination" style="margin-left: auto;"></div>
+    </div>
+
+    <!-- 橱窗列表 -->
+    <div class="layui-row layui-col-space20">
+        {% for model in models %}
+        <div class="layui-col-md6">
+            <div class="ai-card">
+                {% if model['is_default'] == 1 %}
+                <div class="ai-card-default-badge">默认模型</div>
+                {% end %}
+                
+                <div class="ai-card-header">
+                    <div>
+                        <div class="ai-model-name">{{ model['name'] }}</div>
+                        <div class="ai-model-provider"><i class="layui-icon layui-icon-release"></i> {{ model['provider'] }}</div>
+                    </div>
+                    <div class="ai-type-badge">{{ model['model_type'] }}</div>
+                </div>
+                
+                <div class="ai-stats">
+                    <div class="ai-stat-item">
+                        <div class="ai-stat-label">上下文窗口</div>
+                        <div class="ai-stat-value">{{ model['context_size'] }}</div>
+                    </div>
+                    <div class="ai-stat-item">
+                        <div class="ai-stat-label">温度 (Temp)</div>
+                        <div class="ai-stat-value">{{ model['temperature'] }}</div>
+                    </div>
+                    <div class="ai-stat-item">
+                        <div class="ai-stat-label">总消耗 Tokens</div>
+                        <div class="ai-stat-value" style="color: #10b981;">{{ model['total_tokens_used'] }}</div>
+                    </div>
+                </div>
+                
+                <div class="ai-actions">
+                    <button class="btn-cyber" onclick="openChat({{ model['id'] }}, {{ json_encode(model['name']) }})"><i class="layui-icon layui-icon-dialogue"></i> 对话测试</button>
+                    <button class="btn-ghost" onclick='openEditModal({{ json_encode({k: v for k, v in dict(model).items() if k != "api_key"}) }})'><i class="layui-icon layui-icon-edit"></i> 设置</button>
+                    {% if model['is_default'] == 0 %}
+                    <button class="btn-ghost" onclick="setDefault({{ model['id'] }})"><i class="layui-icon layui-icon-rate"></i> 设为默认</button>
+                    {% end %}
+                    <button class="btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" onclick="deleteModel({{ model['id'] }})"><i class="layui-icon layui-icon-delete"></i> 删除</button>
+                </div>
+            </div>
+        </div>
+        {% end %}
+    </div>
+    
+    {% if not models %}
+    <div style="text-align: center; padding: 100px 0; color: #64748b;">
+        <i class="layui-icon layui-icon-ghost" style="font-size: 64px; margin-bottom: 16px; display: block;"></i>
+        暂无模型接入，请点击右上角接入新模型
+    </div>
+    {% end %}
+</div>
+
+<!-- 模型表单弹窗 -->
+<div id="modelFormModal" style="display: none; padding: 24px;">
+    <form class="layui-form dark-form" lay-filter="modelForm">
+        <input type="hidden" name="action" id="action" value="add">
+        <input type="hidden" name="id" id="modelId">
+        
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">模型名称</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="name" id="name" required lay-verify="required" placeholder="如: gpt-3.5-turbo" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">提供商</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="provider" id="provider" required lay-verify="required" placeholder="如: OpenAI" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">Base URL</label>
+            <div class="layui-input-block">
+                <input type="text" name="base_url" id="base_url" required lay-verify="required" placeholder="如: https://api.openai.com/v1" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">API Key</label>
+            <div class="layui-input-block">
+                <input type="password" name="api_key" id="api_key" required lay-verify="required" placeholder="sk-..." class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">模型类型</label>
+                    <div class="layui-input-block">
+                        <select name="model_type" id="model_type">
+                            <option value="text">文本模型 (Text)</option>
+                            <option value="image">图像模型 (Image)</option>
+                            <option value="audio">音频模型 (Audio)</option>
+                            <option value="video">视频模型 (Video)</option>
+                            <option value="multimodal">多模态 (Multimodal)</option>
+                            <option value="embedding">嵌入模型 (Embedding)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">默认模型</label>
+                    <div class="layui-input-block">
+                        <input type="checkbox" name="is_default" id="is_default" lay-skin="switch" lay-text="是|否">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">系统提示词</label>
+            <div class="layui-input-block">
+                <textarea name="system_prompt" id="system_prompt" placeholder="System Prompt (可选)" class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <fieldset class="layui-elem-field layui-field-title" style="border-color: #334155; margin-top: 30px;">
+            <legend style="color: #94a3b8; font-size: 14px;">高级配置</legend>
+        </fieldset>
+
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">Temperature</label>
+                    <div class="layui-input-block">
+                        <input type="number" step="0.1" min="0" max="2" name="temperature" id="temperature" value="0.7" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">Top P</label>
+                    <div class="layui-input-block">
+                        <input type="number" step="0.1" min="0" max="1" name="top_p" id="top_p" value="1.0" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">Max Tokens</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="max_tokens" id="max_tokens" value="2048" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">Context Size</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="context_size" id="context_size" value="4096" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- 对话测试弹窗 -->
+<div id="chatModal" style="display: none; padding: 20px; background: #0f172a;">
+    <div id="chatContainer">
+        <div id="chatMessages">
+            <div class="msg-bubble msg-ai">你好！我是模型助手，请输入问题开始测试。</div>
+        </div>
+        <div class="chat-input-area">
+            <textarea id="chatInput" class="chat-input" placeholder="输入问题，Enter发送，Shift+Enter换行" rows="2"></textarea>
+            <button class="btn-cyber" id="sendBtn" onclick="sendMessage()"><i class="layui-icon layui-icon-release"></i></button>
+        </div>
+    </div>
+</div>
+
+<script>
+var currentChatModelId = null;
+
+layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
+    var layer = layui.layer;
+    var form = layui.form;
+    var laypage = layui.laypage;
+    var $ = layui.jquery;
+    
+    // 自定义暗色主题的 layer
+    layer.config({
+        skin: 'layui-layer-molv' // 使用内置稍微暗点的皮肤作为基础
+    });
+    
+    // 分页
+    laypage.render({
+        elem: 'pagination',
+        count: {{ total }},
+        limit: 6,
+        curr: {{ page }},
+        theme: '#2563eb',
+        jump: function(obj, first){
+            if(!first){
+                window.location.href = '?page=' + obj.curr + '&search=' + encodeURIComponent({{ json_encode(search) }}) + '&model_type=' + encodeURIComponent({{ json_encode(model_type) }});
+            }
+        }
+    });
+
+    // 绑定回车发送
+    $('#chatInput').on('keydown', function(e) {
+        if (e.keyCode === 13 && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+});
+
+function searchModels(){
+    var search = layui.jquery('#searchInput').val();
+    window.location.href = '?search=' + encodeURIComponent(search) + '&model_type=' + encodeURIComponent({{ json_encode(model_type) }});
+}
+
+function clearSearch(){
+    window.location.href = '?model_type=' + encodeURIComponent({{ json_encode(model_type) }});
+}
+
+function filterType(type){
+    window.location.href = '?search=' + encodeURIComponent({{ json_encode(search) }}) + '&model_type=' + encodeURIComponent(type);
+}
+
+function openModelModal(){
+    var $ = layui.jquery;
+    $('#action').val('add');
+    $('#modelId').val('');
+    $('#name').val('');
+    $('#provider').val('');
+    $('#api_key').val('');
+    $('#base_url').val('');
+    $('#model_type').val('text');
+    $('#system_prompt').val('');
+    $('#temperature').val('0.7');
+    $('#top_p').val('1.0');
+    $('#max_tokens').val('2048');
+    $('#context_size').val('4096');
+    $('#is_default').prop('checked', false);
+    
+    layui.form.render();
+    
+    layui.layer.open({
+        type: 1,
+        title: '接入新模型',
+        content: $('#modelFormModal'),
+        area: ['800px', '650px'],
+        btn: ['保存配置', '取消'],
+        btn1: function(index){
+            submitModelForm(index);
+        }
+    });
+}
+
+function openEditModal(modelStr){
+    var $ = layui.jquery;
+    // 如果传入的是字符串则解析
+    var model = typeof modelStr === 'string' ? JSON.parse(modelStr) : modelStr;
+    
+    $('#action').val('edit');
+    $('#modelId').val(model.id);
+    $('#name').val(model.name);
+    $('#provider').val(model.provider);
+    $('#api_key').val(model.api_key);
+    $('#base_url').val(model.base_url);
+    $('#model_type').val(model.model_type);
+    $('#system_prompt').val(model.system_prompt || '');
+    $('#temperature').val(model.temperature);
+    $('#top_p').val(model.top_p);
+    $('#max_tokens').val(model.max_tokens);
+    $('#context_size').val(model.context_size);
+    $('#is_default').prop('checked', model.is_default === 1);
+    
+    layui.form.render();
+    
+    layui.layer.open({
+        type: 1,
+        title: '模型设置',
+        content: $('#modelFormModal'),
+        area: ['800px', '650px'],
+        btn: ['保存配置', '取消'],
+        btn1: function(index){
+            submitModelForm(index);
+        }
+    });
+}
+
+function submitModelForm(index){
+    var $ = layui.jquery;
+    var formData = {
+        action: $('#action').val(),
+        id: $('#modelId').val(),
+        name: $('#name').val(),
+        provider: $('#provider').val(),
+        api_key: $('#api_key').val(),
+        base_url: $('#base_url').val(),
+        model_type: $('#model_type').val(),
+        system_prompt: $('#system_prompt').val(),
+        temperature: $('#temperature').val(),
+        top_p: $('#top_p').val(),
+        max_tokens: $('#max_tokens').val(),
+        context_size: $('#context_size').val(),
+        is_default: $('#is_default').prop('checked') ? 1 : 0,
+        _xsrf: getCookie('_xsrf')
+    };
+    
+    if(!formData.name || !formData.provider || !formData.api_key || !formData.base_url){
+        layui.layer.msg('请填写必填项（名称/提供商/BaseURL/API Key）');
+        return;
+    }
+    
+    $.post('/admin/ai', formData, function(res){
+        if(res.code === 0){
+            layui.layer.close(index);
+            layui.layer.msg(res.msg, {icon: 1});
+            setTimeout(function(){ location.reload(); }, 1000);
+        } else {
+            layui.layer.msg(res.msg, {icon: 2});
+        }
+    });
+}
+
+function deleteModel(id){
+    layui.layer.confirm('确定要删除该模型吗？', {
+        icon: 3, 
+        title:'警告',
+        skin: 'layui-layer-molv'
+    }, function(index){
+        var $ = layui.jquery;
+        $.post('/admin/ai', {
+            action: 'delete',
+            id: id,
+            _xsrf: getCookie('_xsrf')
+        }, function(res){
+            if(res.code === 0){
+                layui.layer.msg(res.msg, {icon: 1});
+                setTimeout(function(){ location.reload(); }, 1000);
+            } else {
+                layui.layer.msg(res.msg, {icon: 2});
+            }
+        });
+        layui.layer.close(index);
+    });
+}
+
+function setDefault(id){
+    var $ = layui.jquery;
+    $.post('/admin/ai', {
+        action: 'set_default',
+        id: id,
+        _xsrf: getCookie('_xsrf')
+    }, function(res){
+        if(res.code === 0){
+            layui.layer.msg(res.msg, {icon: 1});
+            setTimeout(function(){ location.reload(); }, 1000);
+        } else {
+            layui.layer.msg(res.msg, {icon: 2});
+        }
+    });
+}
+
+// 对话测试功能
+function openChat(id, name){
+    currentChatModelId = id;
+    var $ = layui.jquery;
+    
+    // 清空历史记录
+    $('#chatMessages').html('<div class="msg-bubble msg-ai">你好！我是 ' + name + '，请输入问题开始测试。</div>');
+    $('#chatInput').val('');
+    
+    layui.layer.open({
+        type: 1,
+        title: '对话测试: ' + name,
+        content: $('#chatModal'),
+        area: ['600px', '600px'],
+        skin: 'layui-layer-molv',
+        shadeClose: true
+    });
+}
+
+function sendMessage() {
+    var $ = layui.jquery;
+    var input = $('#chatInput');
+    var msg = input.val().trim();
+    
+    if (!msg) return;
+    
+    // 添加用户消息
+    appendMessage(msg, 'user');
+    input.val('');
+    
+    // 准备 AI 消息框
+    var aiMsgId = 'msg-' + Date.now();
+    appendMessage('<span class="layui-anim layui-anim-fadein layui-anim-loop">思考中...</span>', 'ai', aiMsgId);
+    
+    var aiMsgBox = $('#' + aiMsgId);
+    var fullResponse = '';
+    
+    // 使用 SSE
+    var url = '/admin/ai/chat?model_id=' + currentChatModelId + '&message=' + encodeURIComponent(msg);
+    var source = new EventSource(url);
+    
+    source.onmessage = function(event) {
+        if (event.data === '[DONE]') {
+            source.close();
+            return;
+        }
+        
+        try {
+            var data = JSON.parse(event.data);
+            if (data.error) {
+                aiMsgBox.html('<span style="color: #ef4444;">' + data.error + '</span>');
+                source.close();
+                return;
+            }
+            
+            if (data.content) {
+                // 如果是第一条有效内容，清空"思考中"
+                if (fullResponse === '') {
+                    aiMsgBox.empty();
+                }
+                
+                // 处理换行符，将 \n 替换为 <br>
+                var formattedContent = data.content.replace(/\n/g, '<br>');
+                fullResponse += formattedContent;
+                aiMsgBox.append(formattedContent);
+                scrollToBottom();
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    
+    source.onerror = function() {
+        source.close();
+    };
+}
+
+function appendMessage(content, type, id) {
+    var $ = layui.jquery;
+    var idAttr = id ? ' id="' + id + '"' : '';
+    var html = '<div class="msg-bubble msg-' + type + '"' + idAttr + '>' + content + '</div>';
+    $('#chatMessages').append(html);
+    scrollToBottom();
+}
+
+function scrollToBottom() {
+    var $ = layui.jquery;
+    var container = $('#chatMessages');
+    container.scrollTop(container[0].scrollHeight);
+}
+</script>
+{% end %}

@@ -1,0 +1,6 @@
+tornado
+requests
+beautifulsoup4
+lxml
+crawl4ai
+sqlparse

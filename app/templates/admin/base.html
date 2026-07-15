@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  
+  <!-- 引入Layui -->
+  <link rel="stylesheet" href="{{ static_url('dist/layui/css/layui.css') }}">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    .layui-layout-admin {
+      height: 100%;
+    }
+    
+    /* 头部样式 */
+    .layui-layout-admin .layui-header {
+      background: linear-gradient(135deg, #165DFF 0%, #0E3BA1 100%);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: relative;
+    }
+    
+    .layui-layout-admin .layui-logo {
+      color: white;
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 64px;
+      width: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    
+    .layui-layout-admin .layui-logo span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .layui-logo i {
+      font-size: 28px;
+    }
+    
+    .layui-layout-admin .layui-header a {
+      color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .layui-layout-admin .layui-header a:hover {
+      color: white;
+    }
+    
+    /* 顶部右侧菜单 */
+    .header-right {
+      display: flex;
+      align-items: center;
+      height: 64px;
+      flex-shrink: 0;
+      padding-right: 0;
+    }
+    
+    .header-right .layui-nav-item {
+      position: relative;
+    }
+    
+    .header-right .layui-nav-item > a {
+      display: flex;
+      align-items: center;
+      height: 64px;
+      padding: 0 16px 0 8px;
+    }
+    
+    .header-right .layui-nav-child {
+      position: absolute;
+      top: 64px;
+      right: 6px;
+      left: auto;
+      min-width: 120px;
+      background: white;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      border-radius: 4px;
+      padding: 5px 0;
+      z-index: 200;
+    }
+    
+    .header-right .layui-nav-child dd a {
+      color: #333;
+      padding: 10px 20px;
+      line-height: 1.5;
+    }
+    
+    .header-right .layui-nav-child dd a:hover {
+      background: #f2f3f5;
+      color: #165DFF;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: white;
+    }
+    
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .user-avatar i {
+      font-size: 20px;
+    }
+    
+    .user-name {
+      font-size: 14px;
+    }
+    
+    /* 侧边栏样式 */
+    .layui-layout-admin .layui-side {
+      background: #0F172A;
+      width: 260px;
+      top: 64px;
+    }
+    
+    .layui-side-scroll {
+      width: 270px;
+    }
+    
+    .layui-nav {
+      background: transparent;
+      border: none;
+      padding-top: 10px;
+    }
+    
+    .layui-nav-item a {
+      color: rgba(255, 255, 255, 0.7);
+      padding: 16px 30px;
+      transition: all 0.2s;
+    }
+    
+    .layui-nav-item a:hover {
+      color: white;
+      background: rgba(22, 93, 255, 0.1);
+    }
+    
+    .layui-nav-itemed > a {
+      color: white;
+      background: rgba(22, 93, 255, 0.15);
+    }
+    
+    .layui-nav-tree .layui-nav-item a {
+      height: auto;
+      line-height: 24px;
+    }
+    
+    .layui-nav-item a i {
+      margin-right: 10px;
+      font-size: 18px;
+    }
+    
+    .layui-nav-tree .layui-nav-child dd.layui-this, 
+    .layui-nav-tree .layui-nav-child dd.layui-this a, 
+    .layui-nav-tree .layui-this, 
+    .layui-nav-tree .layui-this > a, 
+    .layui-nav-tree .layui-this > a:hover {
+      background: rgba(22, 93, 255, 0.2);
+    }
+    
+    .layui-nav-child {
+      background: rgba(0, 0, 0, 0.15);
+    }
+    
+    .layui-nav-child a {
+      color: rgba(255, 255, 255, 0.6);
+      padding-left: 60px !important;
+    }
+    
+    .layui-nav-child a:hover {
+      color: white;
+    }
+    
+    /* 主体区域 */
+    .layui-layout-admin .layui-body {
+      top: 64px;
+      left: 260px;
+      background: #F5F7FA;
+      overflow-y: auto;
+    }
+    
+    /* 面包屑导航 */
+    .page-breadcrumb {
+      background: white;
+      padding: 16px 24px;
+      border-bottom: 1px solid #E5E6EB;
+      margin-bottom: 20px;
+    }
+    
+    .page-breadcrumb .layui-breadcrumb span {
+      color: #4E5969;
+    }
+    
+    .page-breadcrumb .layui-breadcrumb a {
+      color: #165DFF;
+    }
+    
+    /* 移动端菜单按钮 */
+    .mobile-menu-btn {
+      display: none;
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 160;
+    }
+    
+    /* 移动端侧边栏遮罩 */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 140;
+    }
+    .sidebar-overlay.show {
+      display: block;
+    }
+    
+    @media (max-width: 768px) {
+      .layui-layout-admin .layui-header {
+        padding-left: 72px;
+        padding-right: 12px;
+      }
+      .layui-layout-admin .layui-logo {
+        width: auto;
+        flex: 1;
+        min-width: 0;
+        max-width: calc(100% - 80px);
+        font-size: 15px;
+        justify-content: flex-start;
+        padding-left: 0;
+        gap: 8px;
+      }
+      .layui-layout-admin .layui-logo i {
+        font-size: 22px;
+        flex-shrink: 0;
+      }
+      .mobile-menu-btn {
+        display: flex;
+        left: 16px;
+        width: 40px;
+        height: 40px;
+      }
+      .header-right {
+        padding-right: 0;
+      }
+      .header-right .layui-nav-item > a {
+        padding: 0 14px 0 2px;
+      }
+      .header-right .layui-nav-child {
+        right: 0;
+        top: 56px;
+      }
+      .user-info {
+        gap: 4px;
+      }
+      .user-name {
+        display: none;
+      }
+      .layui-layout-admin .layui-side {
+        position: fixed;
+        left: 0;
+        top: 64px; /* 从顶部导航下方开始，避免遮挡 header 且菜单完整可见 */
+        bottom: 0;
+        z-index: 150;
+        width: 260px !important;
+        transform: translateX(-110%);
+        visibility: hidden;
+        pointer-events: none;
+        transition: transform 0.3s ease, visibility 0.3s ease;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .layui-layout-admin .layui-side.open {
+        transform: translateX(0);
+        visibility: visible;
+        pointer-events: auto;
+      }
+      .layui-layout-admin .layui-body {
+        left: 0 !important;
+      }
+      .layui-side-scroll {
+        width: 260px;
+        height: auto;
+        min-height: 100%;
+      }
+      /* 移动端栅格自适应：所有 md 列在窄屏下占满一行，保证内容居中且不被挤压 */
+      .layui-col-md1,
+      .layui-col-md2,
+      .layui-col-md3,
+      .layui-col-md4,
+      .layui-col-md5,
+      .layui-col-md6,
+      .layui-col-md7,
+      .layui-col-md8,
+      .layui-col-md9,
+      .layui-col-md10,
+      .layui-col-md11,
+      .layui-col-md12 {
+        width: 100% !important;
+        left: auto !important;
+        right: auto !important;
+      }
+      .layui-card {
+        margin-bottom: 15px;
+      }
+      .layui-body {
+        padding: 12px !important;
+      }
+      /* 表格区域允许横向滚动，避免内容被挤压到右侧 */
+      .layui-table-view,
+      .layui-table-box {
+        overflow-x: auto;
+      }
+      /* 管理页面搜索操作栏移动端自适应 */
+      .layui-card-body > .layui-form-item {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+      .layui-card-body > .layui-form-item .layui-inline {
+        width: 100%;
+        margin-right: 0;
+      }
+      .layui-card-body > .layui-form-item .layui-inline .layui-input {
+        width: 100% !important;
+      }
+      .layui-card-body > .layui-form-item .layui-btn {
+        margin-left: 0 !important;
+        margin-bottom: 0;
+      }
+      /* 表格操作按钮间距 */
+      .layui-table td .layui-btn {
+        margin: 2px;
+      }
+      /* 菜单管理卡片头部按钮 */
+      .menu-item .layui-card-header {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .menu-item .layui-card-header > div {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+  <script src="{{ static_url('dist/layui/layui.js') }}"></script>
+<script>
+  function getCookie(name) {
+    var r = document.cookie.match('\\b' + name + '=([^;]*)\\b');
+    return r ? r[1] : undefined;
+  }
+  
+  layui.use(['element', 'layer', 'jquery'], function() {
+    var element = layui.element;
+    var layer = layui.layer;
+    var $ = layui.jquery;
+    
+    $('.layui-nav-child a').on('click', function() {
+      var url = $(this).data('url');
+      var title = $(this).text();
+      if (url) {
+        window.location.href = url;
+      }
+    });
+
+    // 根据当前 URL 自动展开并高亮对应菜单
+    function setActiveMenu() {
+      var path = window.location.pathname;
+      var matched = false;
+      $('.layui-nav-child a').each(function() {
+        var url = $(this).data('url');
+        if (url && path.indexOf(url) === 0) {
+          $(this).parent('dd').addClass('layui-this');
+          $(this).closest('.layui-nav-item').addClass('layui-nav-itemed');
+          matched = true;
+        }
+      });
+      if (matched) {
+        element.render('nav', 'adminNav');
+      }
+    }
+    setActiveMenu();
+  });
+  
+  function logout() {
+    layui.use(['layer', 'jquery'], function() {
+      var layer = layui.layer;
+      var $ = layui.jquery;
+      
+      layer.confirm('确定要退出登录吗？', {
+        icon: 3,
+        title: '提示'
+      }, function(index) {
+        var form = $('<form method="post" action="/admin/logout" style="display:none;"></form>');
+        
+        var xsrfToken = getCookie('_xsrf');
+        if (xsrfToken) {
+          var xsrfInput = $('<input type="hidden" name="_xsrf">').val(xsrfToken);
+          form.append(xsrfInput);
+        }
+        
+        $('body').append(form);
+        form.submit();
+        layer.close(index);
+      });
+    });
+  }
+</script>
+</head>
+<body class="layui-layout-body">
+<div class="layui-layout layui-layout-admin">
+  
+  <!-- 顶部区域：LOGO + 用户菜单区 -->
+  <div class="layui-header">
+    <button class="mobile-menu-btn" onclick="toggleSidebar()" title="展开/收起菜单">
+      <i class="layui-icon layui-icon-spread-left"></i>
+    </button>
+    <div class="layui-logo">
+      <i class="layui-icon layui-icon-engine"></i>
+      <span>智能瞭望与智能问数系统</span>
+    </div>
+    
+    <ul class="layui-nav layui-layout-right header-right">
+      <li class="layui-nav-item">
+        <a href="javascript:void(0);">
+          <div class="user-info">
+            <div class="user-avatar">
+              <i class="layui-icon layui-icon-username"></i>
+            </div>
+            <span class="user-name">{{ username }}</span>
+          </div>
+        </a>
+        <dl class="layui-nav-child">
+          <dd><a href="javascript:void(0);">个人信息</a></dd>
+          <dd><a href="javascript:void(0);">修改密码</a></dd>
+          <dd><a href="javascript:logout();">退出登录</a></dd>
+        </dl>
+      </li>
+    </ul>
+  </div>
+  
+  <!-- 左侧菜单区 -->
+  <div class="layui-side layui-bg-black">
+    <div class="layui-side-scroll">
+      <ul class="layui-nav layui-nav-tree" lay-filter="adminNav">
+        
+        <li class="layui-nav-item">
+          <a href="javascript:;"><i class="layui-icon layui-icon-console"></i>系统管理</a>
+          <dl class="layui-nav-child">
+            <dd><a href="javascript:void(0);" data-url="/admin/user">用户管理</a></dd>
+            <dd><a href="javascript:void(0);" data-url="/admin/role">角色管理</a></dd>
+            <dd><a href="javascript:void(0);" data-url="/admin/function">功能管理</a></dd>
+            <dd><a href="javascript:void(0);" data-url="/admin/menu">菜单管理</a></dd>
+          </dl>
+        </li>
+
+        <li class="layui-nav-item">
+          <a href="javascript:;"><i class="layui-icon layui-icon-website"></i>瞭望中心</a>
+          <dl class="layui-nav-child">
+            <dd><a href="javascript:void(0);" data-url="/admin/watch">瞭望采集</a></dd>
+            <dd><a href="javascript:void(0);" data-url="/admin/data_source">瞭源管理</a></dd>
+            <dd><a href="javascript:void(0);" data-url="/admin/data_warehouse">数据仓库</a></dd>
+          </dl>
+        </li>
+
+        <li class="layui-nav-item">
+          <a href="javascript:;"><i class="layui-icon layui-icon-util"></i>智能应用</a>
+          <dl class="layui-nav-child">
+            <dd><a href="javascript:void(0);" data-url="/admin/ai">模型引擎</a></dd>
+            <dd><a href="javascript:void(0);" data-url="/admin/digital">数字员工</a></dd>
+          </dl>
+        </li>
+        
+      </ul>
+    </div>
+  </div>
+  
+  <!-- 遮罩层 -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  
+  <!-- 右侧工作区 -->
+  <div class="layui-body">
+    {% block body %}{% end %}
+  </div>
+  
+</div>
+
+<script>
+  function isMobile() {
+    return window.innerWidth <= 768;
+  }
+  
+  function toggleSidebar() {
+    var side = document.querySelector('.layui-side');
+    var overlay = document.getElementById('sidebarOverlay');
+    if (isMobile()) {
+      side.classList.toggle('open');
+      overlay.classList.toggle('show', side.classList.contains('open'));
+    }
+  }
+  
+  function closeSidebar() {
+    var side = document.querySelector('.layui-side');
+    var overlay = document.getElementById('sidebarOverlay');
+    side.classList.remove('open');
+    overlay.classList.remove('show');
+  }
+  
+  // 菜单项点击后移动端自动收起（仅点击子菜单链接时收起，父栏目展开/收起时不关闭）
+  document.addEventListener('DOMContentLoaded', function() {
+    var side = document.querySelector('.layui-side');
+    if (side) {
+      side.addEventListener('click', function(e) {
+        var link = e.target.closest('a');
+        if (isMobile() && link && link.dataset.url) {
+          closeSidebar();
+        }
+      });
+    }
+  });
+  
+  window.addEventListener('resize', function() {
+    if (!isMobile()) {
+      closeSidebar();
+    }
+  });
+</script>
+
+</body>
+</html>

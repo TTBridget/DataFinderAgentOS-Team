@@ -1,0 +1,23 @@
+"""
+配置模块
+"""
+
+from .config import (
+    APP_CONFIG,
+    DATABASE_CONFIG,
+    TEMPLATE_CONFIG,
+    OPENAI_CONFIG,
+    SECURITY_CONFIG,
+    LOGGING_CONFIG,
+    BASE_DIR,
+)
+
+__all__ = [
+    'APP_CONFIG',
+    'DATABASE_CONFIG',
+    'TEMPLATE_CONFIG',
+    'OPENAI_CONFIG',
+    'SECURITY_CONFIG',
+    'LOGGING_CONFIG',
+    'BASE_DIR',
+]

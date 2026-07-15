@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="layui-body-content" style="padding: 20px;">
+    <div class="layui-card">
+        <div class="layui-card-header">菜单管理</div>
+        <div class="layui-card-body">
+            <!-- 功能区 -->
+            <div class="layui-form-item" style="margin-bottom: 20px;">
+                <button class="layui-btn layui-btn-normal" onclick="saveOrder()"><i class="layui-icon layui-icon-ok"></i>保存排序</button>
+                <span class="layui-word-aux" style="margin-left: 10px;">拖动菜单可以调整排序，保存后生效</span>
+            </div>
+            
+            <!-- 菜单列表 -->
+            <div id="menuList">
+                {% for menu in menus %}
+                {% if menu['parent_id'] == 0 %}
+                <div class="layui-card menu-item" data-id="{{ menu['id'] }}" style="margin-bottom: 10px;">
+                    <div class="layui-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <span><i class="layui-icon {{ menu['icon'] or 'layui-icon-app' }}"></i> {{ menu['name'] }}</span>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            {% if menu['is_visible'] == 1 %}
+                            <button class="layui-btn layui-btn-xs layui-btn-warm" onclick="toggleVisible({{ menu['id'] }}, 0)">隐藏</button>
+                            {% else %}
+                            <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="toggleVisible({{ menu['id'] }}, 1)">显示</button>
+                            {% end %}
+                        </div>
+                    </div>
+                    <div class="layui-card-body" style="padding: 10px;">
+                        {% for sub in menus %}
+                        {% if sub['parent_id'] == menu['function_id'] %}
+                        <div class="menu-sub-item" data-id="{{ sub['id'] }}" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 15px; background: #f5f5f5; margin: 5px 0;">
+                            <span><i class="layui-icon {{ sub['icon'] or 'layui-icon-app' }}"></i> {{ sub['name'] }}</span>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                {% if sub['is_visible'] == 1 %}
+                                <button class="layui-btn layui-btn-xs layui-btn-warm" onclick="toggleVisible({{ sub['id'] }}, 0)">隐藏</button>
+                                {% else %}
+                                <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="toggleVisible({{ sub['id'] }}, 1)">显示</button>
+                                {% end %}
+                            </div>
+                        </div>
+                        {% end %}
+                        {% end %}
+                    </div>
+                </div>
+                {% end %}
+                {% end %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.menu-item {
+    cursor: move;
+}
+.menu-item .layui-card-header {
+    cursor: move;
+}
+.menu-sub-item {
+    cursor: move;
+    border-left: 3px solid #16baaa;
+}
+.sortable-ghost {
+    opacity: 0.4;
+    background: #c8ebfb;
+}
+</style>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+<script>
+layui.use(['layer', 'jquery'], function(){
+    var layer = layui.layer;
+    var $ = layui.jquery;
+    
+    // 初始化可排序
+    new Sortable(document.getElementById('menuList'), {
+        animation: 150,
+        ghostClass: 'sortable-ghost'
+    });
+    
+    window.saveOrder = function(){
+        var orders = [];
+        $('.menu-item').each(function(index){
+            var menuId = $(this).data('id');
+            orders.push([menuId, index + 1]);
+            
+            // 处理子菜单
+            $(this).find('.menu-sub-item').each(function(subIndex){
+                var subId = $(this).data('id');
+                orders.push([subId, subIndex + 1]);
+            });
+        });
+        
+        $.post('/admin/menu', {
+            action: 'update_order',
+            orders: JSON.stringify(orders),
+            _xsrf: getCookie('_xsrf')
+        }, function(res){
+            if(res.code === 0){
+                layer.msg(res.msg, {icon: 1});
+            } else {
+                layer.msg(res.msg, {icon: 2});
+            }
+        });
+    }
+    
+    window.toggleVisible = function(id, isVisible){
+        $.post('/admin/menu', {
+            action: 'toggle_visible',
+            id: id,
+            is_visible: isVisible,
+            _xsrf: getCookie('_xsrf')
+        }, function(res){
+            if(res.code === 0){
+                layer.msg(res.msg, {icon: 1});
+                setTimeout(function(){ location.reload(); }, 1000);
+            } else {
+                layer.msg(res.msg, {icon: 2});
+            }
+        });
+    }
+});
+</script>
+{% end %}

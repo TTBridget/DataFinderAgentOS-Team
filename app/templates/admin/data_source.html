@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block body %}
+<style>
+/* 高级商务科技风格主题 */
+.biz-container {
+    padding: 24px;
+    min-height: calc(100vh - 64px);
+    background: #0f172a;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(22, 93, 255, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(14, 59, 161, 0.15) 0px, transparent 50%);
+    color: #e2e8f0;
+}
+
+.biz-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.biz-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    font-size: 16px;
+    font-weight: 600;
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.biz-card-body {
+    padding: 20px;
+}
+
+/* 按钮样式 */
+.btn-cyber {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 20px;
+    height: 38px;
+    line-height: 38px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-cyber:hover {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    color: white;
+}
+
+.btn-ghost {
+    background: rgba(51, 65, 85, 0.5);
+    color: #cbd5e1;
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    border-radius: 6px;
+    padding: 0 20px;
+    height: 38px;
+    line-height: 36px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-ghost:hover {
+    background: rgba(71, 85, 105, 0.8);
+    color: white;
+}
+
+/* 输入框暗色主题 */
+.dark-input {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+    border-radius: 6px !important;
+}
+.dark-input:focus {
+    border-color: #3b82f6 !important;
+}
+
+/* 表格暗色主题 */
+.layui-table {
+    background-color: transparent !important;
+    color: #cbd5e1 !important;
+}
+.layui-table thead tr {
+    background-color: rgba(15, 23, 42, 0.6) !important;
+}
+.layui-table th {
+    color: #f8fafc;
+    font-weight: 600;
+    border-color: rgba(51, 65, 85, 0.5) !important;
+}
+.layui-table td {
+    border-color: rgba(51, 65, 85, 0.5) !important;
+}
+.layui-table tbody tr:hover, .layui-table-hover {
+    background-color: rgba(30, 41, 59, 0.8) !important;
+}
+
+/* 分页暗色主题 */
+.layui-laypage a, .layui-laypage span {
+    background-color: rgba(30, 41, 59, 0.6) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+}
+.layui-laypage .layui-laypage-curr .layui-laypage-em {
+    background-color: #2563eb !important;
+}
+
+/* 弹窗暗色主题 */
+.layui-layer-page .layui-layer-content {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+.layui-layer-title {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    border-bottom: 1px solid #334155 !important;
+}
+.dark-form .layui-form-label {
+    color: #cbd5e1;
+}
+.dark-form .layui-input, .dark-form .layui-textarea {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #f8fafc;
+}
+.dark-form .layui-input:focus, .dark-form .layui-textarea:focus {
+    border-color: #3b82f6 !important;
+}
+</style>
+
+<div class="biz-container">
+    <div class="biz-card">
+        <div class="biz-card-header">
+            <i class="layui-icon layui-icon-database" style="color: #3b82f6;"></i> 瞭源管理
+        </div>
+        <div class="biz-card-body">
+            <!-- 搜索和功能区 -->
+            <div class="layui-form-item" style="margin-bottom: 24px;">
+                <div class="layui-inline" style="margin-right: 16px;">
+                    <input type="text" id="searchInput" placeholder="请输入瞭源名称..." class="layui-input dark-input" style="width: 300px;">
+                </div>
+                <button class="btn-ghost" onclick="searchSources()"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+                <button class="btn-cyber" onclick="openAddModal()" style="margin-left: 10px;"><i class="layui-icon layui-icon-add-1"></i> 新增瞭源</button>
+            </div>
+            
+            <!-- 表格区 -->
+            <table class="layui-table" lay-skin="line">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>名称</th>
+                        <th>描述</th>
+                        <th>Base URL</th>
+                        <th>状态</th>
+                        <th>排序</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for source in data_sources %}
+                    <tr>
+                        <td>{{ source['id'] }}</td>
+                        <td style="font-weight: 600; color: #f8fafc;">{{ source['name'] }}</td>
+                        <td>{{ source['description'] or '-' }}</td>
+                        <td style="font-family: monospace; color: #60a5fa;">{{ source['base_url'] }}</td>
+                        <td>
+                            {% if source['is_enabled'] == 1 %}
+                            <span class="layui-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">启用</span>
+                            {% else %}
+                            <span class="layui-badge" style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.4);">禁用</span>
+                            {% end %}
+                        </td>
+                        <td>{{ source['sort_order'] }}</td>
+                        <td>{{ source['created_at'] }}</td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);" onclick="openEditModal({{ source['id'] }}, {{ json_encode(source['name']) }}, {{ json_encode(source['description'] or '') }}, {{ json_encode(source['base_url']) }}, {{ json_encode(source['path_template']) }}, {{ json_encode(source['headers']) }}, {{ source['is_enabled'] }}, {{ source['sort_order'] }})">编辑</button>
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="deleteSource({{ source['id'] }})">删除</button>
+                        </td>
+                    </tr>
+                    {% end %}
+                </tbody>
+            </table>
+            
+            <!-- 分页区 -->
+            <div id="pagination" style="margin-top: 20px; text-align: right;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑瞭源弹窗 -->
+<div id="sourceModal" style="display: none; padding: 24px;">
+    <form class="layui-form dark-form" lay-filter="sourceForm">
+        <input type="hidden" name="action" id="action" value="add">
+        <input type="hidden" name="id" id="sourceId">
+        <div class="layui-form-item">
+            <label class="layui-form-label">名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" id="name" required lay-verify="required" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">描述</label>
+            <div class="layui-input-block">
+                <textarea name="description" id="description" class="layui-textarea"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">Base URL</label>
+            <div class="layui-input-block">
+                <input type="text" name="base_url" id="base_url" required lay-verify="required" class="layui-input" placeholder="如: https://www.baidu.com">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">路径模板</label>
+            <div class="layui-input-block">
+                <input type="text" name="path_template" id="path_template" required lay-verify="required" class="layui-input" placeholder="如: /s?word={keyword}&pn={page}">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">Headers</label>
+            <div class="layui-input-block">
+                <textarea name="headers" id="headers" class="layui-textarea" placeholder='{"User-Agent": "Mozilla/5.0 ..."}' style="font-family: monospace;"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">状态</label>
+            <div class="layui-input-block">
+                <input type="checkbox" name="is_enabled" id="is_enabled" lay-skin="switch" lay-text="启用|禁用" checked>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">排序</label>
+            <div class="layui-input-block">
+                <input type="number" name="sort_order" id="sort_order" value="0" class="layui-input">
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
+	var layer = layui.layer;
+	var form = layui.form;
+	var laypage = layui.laypage;
+	var $ = layui.jquery;
+	
+	// 自定义暗色主题的 layer
+	layer.config({
+		skin: 'layui-layer-molv'
+	});
+	
+	// 分页
+	laypage.render({
+		elem: 'pagination',
+		count: {{ total }},
+		limit: 20,
+		curr: {{ page }},
+		theme: '#2563eb',
+		jump: function(obj, first){
+			if(!first){
+				window.location.href = '?page=' + obj.curr + '&search=' + $('#searchInput').val();
+			}
+		}
+	});
+});
+
+function searchSources(){
+	var search = $('#searchInput').val();
+	window.location.href = '?search=' + search;
+}
+
+function openAddModal(){
+	$('#action').val('add');
+	$('#sourceId').val('');
+	$('#name').val('');
+	$('#description').val('');
+	$('#base_url').val('');
+	$('#path_template').val('');
+	$('#headers').val('{}');
+	$('#sort_order').val('0');
+	layui.form.render('checkbox');
+	
+	layui.layer.open({
+		type: 1,
+		title: '添加瞭源',
+		content: $('#sourceModal'),
+		area: ['700px', '600px'],
+		btn: ['确定', '取消'],
+		yes: function(index){
+			submitSourceForm(index);
+		}
+	});
+}
+
+function openEditModal(id, name, description, base_url, path_template, headers, is_enabled, sort_order){
+	$('#action').val('edit');
+	$('#sourceId').val(id);
+	$('#name').val(name);
+	$('#description').val(description);
+	$('#base_url').val(base_url);
+	$('#path_template').val(path_template);
+	$('#headers').val(headers);
+	$('#sort_order').val(sort_order);
+	
+	if (is_enabled == 1) {
+		$('#is_enabled').prop('checked', true);
+	} else {
+		$('#is_enabled').prop('checked', false);
+	}
+	layui.form.render('checkbox');
+	
+	layui.layer.open({
+		type: 1,
+		title: '编辑瞭源',
+		content: $('#sourceModal'),
+		area: ['700px', '600px'],
+		btn: ['确定', '取消'],
+		yes: function(index){
+			submitSourceForm(index);
+		}
+	});
+}
+
+function submitSourceForm(index){
+	var $ = layui.jquery;
+	var formData = {
+		action: $('#action').val(),
+		id: $('#sourceId').val(),
+		name: $('#name').val(),
+		description: $('#description').val(),
+		base_url: $('#base_url').val(),
+		path_template: $('#path_template').val(),
+		headers: $('#headers').val(),
+		is_enabled: $('#is_enabled').prop('checked') ? 1 : 0,
+		sort_order: $('#sort_order').val(),
+		_xsrf: getCookie('_xsrf')
+	};
+	
+	if(!formData.name || !formData.base_url || !formData.path_template){
+		layui.layer.msg('请填写完整信息');
+		return;
+	}
+	
+	$.post('/admin/data_source', formData, function(res){
+		if(res.code === 0){
+			layui.layer.close(index);
+			layui.layer.msg(res.msg, {icon: 1});
+			setTimeout(function(){ location.reload(); }, 1000);
+		} else {
+			layui.layer.msg(res.msg, {icon: 2});
+		}
+	});
+}
+
+function deleteSource(id){
+	layui.layer.confirm('确定要删除该瞭源吗？', {icon: 3}, function(index){
+		var $ = layui.jquery;
+		$.post('/admin/data_source', {
+			action: 'delete',
+			id: id,
+			_xsrf: getCookie('_xsrf')
+		}, function(res){
+			if(res.code === 0){
+				layui.layer.msg(res.msg, {icon: 1});
+				setTimeout(function(){ location.reload(); }, 1000);
+			} else {
+				layui.layer.msg(res.msg, {icon: 2});
+			}
+		});
+		layui.layer.close(index);
+	});
+}
+</script>
+{% end %}

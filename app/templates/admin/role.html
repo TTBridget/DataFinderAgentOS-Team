@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="layui-body-content" style="padding: 20px;">
+    <div class="layui-card">
+        <div class="layui-card-header">角色管理</div>
+        <div class="layui-card-body">
+            <!-- 搜索和功能区 -->
+            <div class="layui-form-item" style="margin-bottom: 20px;">
+                <div class="layui-inline">
+                    <input type="text" id="searchInput" placeholder="请输入角色名" class="layui-input" style="width: 200px;">
+                </div>
+                <button class="layui-btn" onclick="searchRoles()"><i class="layui-icon layui-icon-search"></i>搜索</button>
+                <button class="layui-btn layui-btn-normal" onclick="openAddModal()"><i class="layui-icon layui-icon-add-1"></i>添加角色</button>
+            </div>
+            
+            <!-- 表格区 -->
+            <table class="layui-table" lay-skin="line">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>角色名</th>
+                        <th>描述</th>
+                        <th>是否系统角色</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for role in roles %}
+                    <tr>
+                        <td>{{ role['id'] }}</td>
+                        <td>{{ role['name'] }}</td>
+                        <td>{{ role['description'] or '-' }}</td>
+                        <td>
+                            {% if role['is_system'] == 1 %}
+                            <span class="layui-badge layui-bg-blue">是</span>
+                            {% else %}
+                            <span class="layui-badge layui-bg-gray">否</span>
+                            {% end %}
+                        </td>
+                        <td>{{ role['created_at'] }}</td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="openPermissionModal({{ role['id'] }})">权限配置</button>
+                            {% if role['is_system'] != 1 %}
+                            <button class="layui-btn layui-btn-xs" onclick="openEditModal({{ role['id'] }}, '{{ role['name'] }}', '{{ role['description'] or '' }}')">编辑</button>
+                            <button class="layui-btn layui-btn-xs layui-btn-danger" onclick="deleteRole({{ role['id'] }})">删除</button>
+                            {% end %}
+                        </td>
+                    </tr>
+                    {% end %}
+                </tbody>
+            </table>
+            
+            <!-- 分页区 -->
+            <div id="pagination"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑角色弹窗 -->
+<div id="roleModal" style="display: none; padding: 20px;">
+    <form class="layui-form">
+        <input type="hidden" name="action" id="action" value="add">
+        <input type="hidden" name="id" id="roleId">
+        <div class="layui-form-item">
+            <label class="layui-form-label">角色名</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" id="name" required lay-verify="required" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">描述</label>
+            <div class="layui-input-block">
+                <textarea name="description" id="description" class="layui-textarea"></textarea>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- 权限配置弹窗 -->
+<div id="permissionModal" style="display: none; padding: 20px;">
+    <div id="functionTree"></div>
+</div>
+
+<script>
+layui.use(['layer', 'form', 'laypage', 'tree', 'jquery'], function(){
+    var layer = layui.layer;
+    var form = layui.form;
+    var laypage = layui.laypage;
+    var tree = layui.tree;
+    var $ = layui.jquery;
+    
+    // 分页
+    laypage.render({
+        elem: 'pagination',
+        count: {{ total }},
+        limit: 20,
+        curr: {{ page }},
+        jump: function(obj, first){
+            if(!first){
+                window.location.href = '?page=' + obj.curr + '&search=' + $('#searchInput').val();
+            }
+        }
+    });
+    
+    var currentRoleId = null;
+    
+    window.searchRoles = function(){
+        var search = $('#searchInput').val();
+        window.location.href = '?search=' + search;
+    }
+    
+    window.openAddModal = function(){
+        $('#action').val('add');
+        $('#roleId').val('');
+        $('#name').val('');
+        $('#description').val('');
+        
+        layer.open({
+            type: 1,
+            title: '添加角色',
+            content: $('#roleModal'),
+            area: ['500px', '350px'],
+            btn: ['确定', '取消'],
+            yes: function(index){
+                submitRoleForm(index);
+            }
+        });
+    }
+    
+    window.openEditModal = function(id, name, description){
+        $('#action').val('edit');
+        $('#roleId').val(id);
+        $('#name').val(name);
+        $('#description').val(description);
+        
+        layer.open({
+            type: 1,
+            title: '编辑角色',
+            content: $('#roleModal'),
+            area: ['500px', '350px'],
+            btn: ['确定', '取消'],
+            yes: function(index){
+                submitRoleForm(index);
+            }
+        });
+    }
+    
+    function submitRoleForm(index){
+        var formData = {
+            action: $('#action').val(),
+            id: $('#roleId').val(),
+            name: $('#name').val(),
+            description: $('#description').val(),
+            _xsrf: getCookie('_xsrf')
+        };
+        
+        if(!formData.name){
+            layer.msg('请输入角色名');
+            return;
+        }
+        
+        $.post('/admin/role', formData, function(res){
+            if(res.code === 0){
+                layer.close(index);
+                layer.msg(res.msg, {icon: 1});
+                setTimeout(function(){ location.reload(); }, 1000);
+            } else {
+                layer.msg(res.msg, {icon: 2});
+            }
+        });
+    }
+    
+    window.deleteRole = function(id){
+        layer.confirm('确定要删除该角色吗？', {icon: 3}, function(index){
+            $.post('/admin/role', {
+                action: 'delete',
+                id: id,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code === 0){
+                    layer.msg(res.msg, {icon: 1});
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    }
+    
+    window.openPermissionModal = function(roleId){
+        currentRoleId = roleId;
+        
+        // 获取功能树
+        $.post('/admin/role', {
+            action: 'get_functions',
+            id: roleId,
+            _xsrf: getCookie('_xsrf')
+        }, function(res){
+            if(res.code === 0){
+                // 渲染树
+                tree.render({
+                    elem: '#functionTree',
+                    data: res.data.tree,
+                    showCheckbox: true,
+                    id: 'functionTreeId',
+                    checkedKeys: res.data.assigned
+                });
+                
+                layer.open({
+                    type: 1,
+                    title: '权限配置',
+                    content: $('#permissionModal'),
+                    area: ['500px', '450px'],
+                    btn: ['保存', '取消'],
+                    yes: function(index){
+                        savePermissions(index);
+                    }
+                });
+            }
+        });
+    }
+    
+    function savePermissions(index){
+        var checkedData = tree.getChecked('functionTreeId');
+        var functionIds = [];
+        
+        // 递归获取所有选中的节点ID
+        function getIds(nodes){
+            for(var i = 0; i < nodes.length; i++){
+                functionIds.push(nodes[i].id);
+                if(nodes[i].children){
+                    getIds(nodes[i].children);
+                }
+            }
+        }
+        getIds(checkedData);
+        
+        $.post('/admin/role', {
+            action: 'assign_functions',
+            id: currentRoleId,
+            function_ids: functionIds.join(','),
+            _xsrf: getCookie('_xsrf')
+        }, function(res){
+            if(res.code === 0){
+                layer.close(index);
+                layer.msg(res.msg, {icon: 1});
+            } else {
+                layer.msg(res.msg, {icon: 2});
+            }
+        });
+    }
+});
+</script>
+{% end %}
