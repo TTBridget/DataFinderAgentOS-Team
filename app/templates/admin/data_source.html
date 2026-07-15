@@ -188,7 +188,16 @@
                         <td>{{ source['sort_order'] }}</td>
                         <td>{{ source['created_at'] }}</td>
                         <td>
-                            <button class="layui-btn layui-btn-xs" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);" onclick="openEditModal({{ source['id'] }}, {{ json_encode(source['name']) }}, {{ json_encode(source['description'] or '') }}, {{ json_encode(source['base_url']) }}, {{ json_encode(source['path_template']) }}, {{ json_encode(source['headers']) }}, {{ source['is_enabled'] }}, {{ source['sort_order'] }})">编辑</button>
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);"
+                                    data-id="{{ source['id'] }}"
+                                    data-name="{{ source['name'] }}"
+                                    data-description="{{ source['description'] or '' }}"
+                                    data-base-url="{{ source['base_url'] }}"
+                                    data-path-template="{{ source['path_template'] }}"
+                                    data-headers="{{ source['headers'] }}"
+                                    data-is-enabled="{{ source['is_enabled'] }}"
+                                    data-sort-order="{{ source['sort_order'] }}"
+                                    onclick="openEditModal(this)">编辑</button>
                             <button class="layui-btn layui-btn-xs" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="deleteSource({{ source['id'] }})">删除</button>
                         </td>
                     </tr>
@@ -258,6 +267,7 @@ layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
 	var form = layui.form;
 	var laypage = layui.laypage;
 	var $ = layui.jquery;
+	window.$ = $;
 	
 	// 自定义暗色主题的 layer
 	layer.config({
@@ -307,7 +317,17 @@ function openAddModal(){
 	});
 }
 
-function openEditModal(id, name, description, base_url, path_template, headers, is_enabled, sort_order){
+function openEditModal(btn){
+	var $btn = $(btn);
+	var id = $btn.data('id');
+	var name = $btn.data('name');
+	var description = $btn.data('description');
+	var base_url = $btn.data('base-url');
+	var path_template = $btn.data('path-template');
+	var headers = $btn.attr('data-headers');
+	var is_enabled = $btn.data('is-enabled');
+	var sort_order = $btn.data('sort-order');
+	
 	$('#action').val('edit');
 	$('#sourceId').val(id);
 	$('#name').val(name);

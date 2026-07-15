@@ -535,14 +535,21 @@ class WatchManageHandler(AdminBaseHandler):
 				return
 			
 			total_collected = 0
+			errors = []
 			for sid in source_ids:
 				source = DataSourceRepository.get_by_id(sid)
 				if source:
 					result = CollectedDataRepository.collect_from_source(source, keyword, page)
 					if result["success"]:
 						total_collected += result["count"]
+					else:
+						errors.append(f"{source['name']}: {result.get('error', '采集失败')}")
 			
-			self.write({"code": 0, "msg": f"采集成功，共采集 {total_collected} 条数据", "count": total_collected})
+			msg = f"采集成功，共采集 {total_collected} 条数据"
+			if errors:
+				msg += "（" + "；".join(errors) + "）"
+			
+			self.write({"code": 0, "msg": msg, "count": total_collected})
 		
 		elif action == "clear":
 			CollectedDataRepository.clear()

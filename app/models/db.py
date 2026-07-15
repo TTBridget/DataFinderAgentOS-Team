@@ -409,21 +409,21 @@ def init_db():
 			("百度新闻",)
 		).fetchone()
 		
+		# 通用 PC 浏览器请求头，适用于百度、微博等站点
+		baidu_headers = """{
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0",
+			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+			"Accept-Language": "zh-CN,zh;q=0.9,zh-TW;q=0.8,zh-HK;q=0.7,en-US;q=0.6,en;q=0.5",
+			"Accept-Encoding": "gzip, deflate, br, zstd",
+			"Connection": "keep-alive",
+			"Upgrade-Insecure-Requests": "1",
+			"Sec-Fetch-Dest": "document",
+			"Sec-Fetch-Mode": "navigate",
+			"Sec-Fetch-Site": "none",
+			"Sec-Fetch-User": "?1"
+		}"""
+		
 		if not source_exists:
-			# 不存在，创建默认百度新闻数据源
-			baidu_headers = """{
-				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0",
-				"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-				"Accept-Language": "zh-CN,zh;q=0.9,zh-TW;q=0.8,zh-HK;q=0.7,en-US;q=0.6,en;q=0.5",
-				"Accept-Encoding": "gzip, deflate, br, zstd",
-				"Connection": "keep-alive",
-				"Upgrade-Insecure-Requests": "1",
-				"Sec-Fetch-Dest": "document",
-				"Sec-Fetch-Mode": "navigate",
-				"Sec-Fetch-Site": "none",
-				"Sec-Fetch-User": "?1"
-			}"""
-			
 			conn.execute(
 				"""
 				INSERT INTO data_sources (name, description, base_url, path_template, headers, is_enabled, sort_order)
@@ -442,6 +442,54 @@ def init_db():
 			print("默认百度新闻数据源创建成功！")
 		else:
 			print("默认百度新闻数据源已存在")
+		
+		# 补充其他默认瞭源
+		default_sources = [
+			(
+				"百度搜索",
+				"百度搜索网页采集源",
+				"https://www.baidu.com",
+				"/s?wd={keyword}&pn={page}",
+				baidu_headers,
+				1,
+				2
+			),
+			(
+				"微博热搜",
+				"微博实时热搜榜采集源",
+				"https://s.weibo.com",
+				"/top/summary",
+				baidu_headers,
+				1,
+				3
+			),
+			(
+				"微博搜索",
+				"微博关键词搜索采集源",
+				"https://s.weibo.com",
+				"/weibo?q={keyword}&page={page}",
+				baidu_headers,
+				1,
+				4
+			)
+		]
+		
+		for ds in default_sources:
+			exists = conn.execute(
+				"SELECT 1 FROM data_sources WHERE name = ?",
+				(ds[0],)
+			).fetchone()
+			if not exists:
+				conn.execute(
+					"""
+					INSERT INTO data_sources (name, description, base_url, path_template, headers, is_enabled, sort_order)
+					VALUES (?, ?, ?, ?, ?, ?, ?)
+					""",
+					ds
+				)
+				print(f"默认{ds[0]}数据源创建成功！")
+			else:
+				print(f"默认{ds[0]}数据源已存在")
 
 		# 创建模型引擎表
 		conn.execute(
