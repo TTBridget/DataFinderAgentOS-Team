@@ -83,6 +83,20 @@ def _migrate_menu_structure(conn):
 			(2, func_id)
 		)
 	
+	# 8. 添加舆情大屏功能
+	conn.execute(
+		"INSERT OR IGNORE INTO functions (id, name, code, icon, route, parent_id, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		(16, "舆情大屏", "public_sentiment", "layui-icon-chart-screen", "/admin/public_sentiment", 9, 3)
+	)
+	
+	# 9. 为舆情大屏创建菜单
+	exists = conn.execute("SELECT 1 FROM menus WHERE function_id = 16").fetchone()
+	if not exists:
+		conn.execute("INSERT INTO menus (function_id, sort_order, is_visible) VALUES (16, 3, 1)")
+	
+	# 10. 为系统管理员角色添加舆情大屏权限
+	conn.execute("INSERT OR IGNORE INTO role_functions (role_id, function_id) VALUES (2, 16)")
+	
 	print("菜单结构迁移完成")
 
 def init_db():
@@ -762,3 +776,68 @@ def init_db():
 			conn.execute("ALTER TABLE chat_messages ADD COLUMN is_edited INTEGER DEFAULT 0")
 		except sqlite3.OperationalError:
 			pass
+		
+		# 创建敏感词库表
+		conn.execute(
+			"""
+			CREATE TABLE IF NOT EXISTS sensitive_words(
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				word TEXT NOT NULL UNIQUE,
+				level INTEGER DEFAULT 1, -- 1-低, 2-中, 3-高
+				description TEXT,
+				is_enabled INTEGER DEFAULT 1,
+				created_at TEXT NOT NULL DEFAULT(datetime('now','localtime')),
+				updated_at TEXT NOT NULL DEFAULT(datetime('now','localtime'))
+			)
+			"""
+		)
+		
+		# 创建预警记录表
+		conn.execute(
+			"""
+			CREATE TABLE IF NOT EXISTS alerts(
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER,
+				user_name TEXT,
+				sensitive_word TEXT,
+				content TEXT,
+				content_type TEXT NOT NULL, -- 'chat' 或 'collected'
+				source_id INTEGER, -- 会话ID或采集数据ID
+				source_name TEXT, -- 会话标题或采集来源
+				status TEXT DEFAULT 'pending', -- pending, ignored, handled, feedback_sent
+				created_at TEXT NOT NULL DEFAULT(datetime('now','localtime')),
+				updated_at TEXT NOT NULL DEFAULT(datetime('now','localtime'))
+			)
+			"""
+		)
+		
+		# 创建通知表
+		conn.execute(
+			"""
+			CREATE TABLE IF NOT EXISTS notifications(
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER NOT NULL,
+				title TEXT NOT NULL,
+				content TEXT NOT NULL,
+				is_read INTEGER DEFAULT 0,
+				created_at TEXT NOT NULL DEFAULT(datetime('now','localtime'))
+			)
+			"""
+		)
+		
+		# 初始化默认敏感词
+		default_words = [
+			("敏感词1", 3, "政治敏感"),
+			("敏感词2", 3, "违法内容"),
+			("敏感词3", 2, "低俗用语"),
+			("敏感词4", 2, "人身攻击"),
+			("敏感词5", 1, "广告推广"),
+		]
+		for word, level, desc in default_words:
+			try:
+				conn.execute(
+					"INSERT OR IGNORE INTO sensitive_words (word, level, description) VALUES (?, ?, ?)",
+					(word, level, desc)
+				)
+			except:
+				pass
