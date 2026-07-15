@@ -12,15 +12,48 @@
     color: #e2e8f0;
 }
 
+/* Tab 切换栏 */
+.tab-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid rgba(51, 65, 85, 0.6);
+}
+.tab-btn {
+    background: rgba(30, 41, 59, 0.6);
+    color: #94a3b8;
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    padding: 12px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    top: 1px;
+}
+.tab-btn:hover {
+    color: #e2e8f0;
+    background: rgba(51, 65, 85, 0.6);
+}
+.tab-btn.active {
+    color: #60a5fa;
+    background: rgba(15, 23, 42, 0.8);
+    border-color: #3b82f6;
+    border-bottom: 2px solid #0f172a;
+}
+
 .biz-card {
     background: rgba(30, 41, 59, 0.6);
     border: 1px solid rgba(51, 65, 85, 0.8);
-    border-radius: 12px;
+    border-radius: 0 12px 12px 12px;
     backdrop-filter: blur(10px);
-    margin-bottom: 24px;
     overflow: hidden;
 }
-
 .biz-card-header {
     padding: 16px 20px;
     border-bottom: 1px solid rgba(51, 65, 85, 0.5);
@@ -30,51 +63,26 @@
     background: rgba(15, 23, 42, 0.4);
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
 }
-
-.biz-card-body {
-    padding: 20px;
-}
-
-.btn-cyber {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 0 20px;
-    height: 38px;
-    line-height: 38px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-.btn-cyber:hover {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-    color: white;
-}
+.biz-card-body { padding: 20px; }
 
 .btn-ghost {
     background: rgba(51, 65, 85, 0.5);
     color: #cbd5e1;
     border: 1px solid rgba(71, 85, 105, 0.5);
     border-radius: 6px;
-    padding: 0 20px;
-    height: 38px;
-    line-height: 36px;
+    padding: 0 16px;
+    height: 36px;
+    line-height: 34px;
     cursor: pointer;
     transition: all 0.2s;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
-.btn-ghost:hover {
-    background: rgba(71, 85, 105, 0.8);
-    color: white;
-}
+.btn-ghost:hover { background: rgba(71, 85, 105, 0.8); color: white; }
 
 .dark-input {
     background: #1e293b !important;
@@ -82,42 +90,28 @@
     color: #f8fafc !important;
     border-radius: 6px !important;
 }
-.dark-input:focus {
-    border-color: #3b82f6 !important;
-}
+.dark-input:focus { border-color: #3b82f6 !important; }
 
 .layui-table {
     background-color: transparent !important;
     color: #cbd5e1 !important;
 }
-.layui-table thead tr {
-    background-color: rgba(15, 23, 42, 0.6) !important;
-}
+.layui-table thead tr { background-color: rgba(15, 23, 42, 0.6) !important; }
 .layui-table th {
-    color: #f8fafc;
-    font-weight: 600;
+    color: #f8fafc; font-weight: 600;
     border-color: rgba(51, 65, 85, 0.5) !important;
 }
-.layui-table td {
-    border-color: rgba(51, 65, 85, 0.5) !important;
-}
-.layui-table tbody tr:hover, .layui-table-hover {
-    background-color: rgba(30, 41, 59, 0.8) !important;
-}
+.layui-table td { border-color: rgba(51, 65, 85, 0.5) !important; }
+.layui-table tbody tr:hover { background-color: rgba(30, 41, 59, 0.8) !important; }
 
 .layui-laypage a, .layui-laypage span {
     background-color: rgba(30, 41, 59, 0.6) !important;
     color: #e2e8f0 !important;
     border-color: rgba(51, 65, 85, 0.8) !important;
 }
-.layui-laypage .layui-laypage-curr .layui-laypage-em {
-    background-color: #2563eb !important;
-}
+.layui-laypage .layui-laypage-curr .layui-laypage-em { background-color: #2563eb !important; }
 
-.layui-layer-page .layui-layer-content {
-    background: #0f172a;
-    color: #e2e8f0;
-}
+.layui-layer-page .layui-layer-content { background: #0f172a; color: #e2e8f0; }
 .layui-layer-title {
     background: #1e293b !important;
     color: #f8fafc !important;
@@ -125,166 +119,429 @@
 }
 
 .msg-content {
-    max-width: 320px;
+    max-width: 260px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     color: #e2e8f0;
 }
+
+/* loading 动画 */
+.loading-row td {
+    text-align: center;
+    padding: 40px !important;
+}
+.loading-dots {
+    display: inline-flex;
+    gap: 6px;
+}
+.loading-dots span {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #3b82f6;
+    animation: bounce 1.2s infinite ease-in-out;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-8px); opacity: 1; }
+}
+
+.badge-user {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    padding: 2px 8px; border-radius: 4px; font-size: 12px;
+    white-space: nowrap; display: inline-block;
+}
+.badge-assistant {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    padding: 2px 8px; border-radius: 4px; font-size: 12px;
+    white-space: nowrap; display: inline-block;
+}
+.badge-pinned {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    padding: 2px 8px; border-radius: 4px; font-size: 12px;
+}
+
+.btn-xs-blue {
+    background: rgba(59, 130, 246, 0.2); color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    padding: 0 10px; height: 26px; line-height: 26px;
+    border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+.btn-xs-green {
+    background: rgba(16, 185, 129, 0.2); color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    padding: 0 10px; height: 26px; line-height: 26px;
+    border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+.btn-xs-red {
+    background: rgba(239, 68, 68, 0.2); color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    padding: 0 10px; height: 26px; line-height: 26px;
+    border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+.btn-xs-blue:hover, .btn-xs-green:hover, .btn-xs-red:hover { opacity: 0.85; }
+
+.empty-tip {
+    text-align: center; padding: 50px 0; color: #64748b;
+}
+.empty-tip i { font-size: 48px; display: block; margin-bottom: 12px; }
 </style>
 
 <div class="biz-container">
-    <div class="biz-card">
+    <!-- Tab 切换栏 -->
+    <div class="tab-bar">
+        <div class="tab-btn {% if tab != 'session' %}active{% end %}" onclick="switchTab('conversation')">
+            <i class="layui-icon layui-icon-reply-fill"></i> 对话管理
+        </div>
+        <div class="tab-btn {% if tab == 'session' %}active{% end %}" onclick="switchTab('session')">
+            <i class="layui-icon layui-icon-dialogue"></i> 会话管理
+        </div>
+    </div>
+
+    <!-- 对话管理 Tab -->
+    <div class="biz-card" id="convPanel" {% if tab == 'session' %}style="display:none;"{% end %}>
         <div class="biz-card-header">
-            <i class="layui-icon layui-icon-reply-fill" style="color: #3b82f6;"></i> 对话管理
+            <span><i class="layui-icon layui-icon-reply-fill" style="color:#3b82f6;"></i> 对话记录</span>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="text" id="convSearch" placeholder="搜索内容/会话/用户..." class="layui-input dark-input" style="width:240px; height:34px;">
+                <button class="btn-ghost" onclick="loadConversations(1)"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+                <button class="btn-ghost" onclick="convReset()"><i class="layui-icon layui-icon-refresh"></i> 重置</button>
+            </div>
         </div>
         <div class="biz-card-body">
-            <div class="layui-form-item" style="margin-bottom: 24px;">
-                <div class="layui-inline" style="margin-right: 16px;">
-                    <input type="text" id="searchInput" placeholder="搜索消息内容、会话标题或用户名..." class="layui-input dark-input" style="width: 300px;" value="{{ search }}">
-                </div>
-                <div class="layui-inline" style="margin-right: 16px;">
-                    <input type="number" id="sessionIdInput" placeholder="会话 ID" class="layui-input dark-input" style="width: 140px;" value="{{ session_id }}">
-                </div>
-                <div class="layui-inline" style="margin-right: 16px;">
-                    <input type="number" id="userIdInput" placeholder="用户 ID" class="layui-input dark-input" style="width: 140px;" value="{{ user_id }}">
-                </div>
-                <button class="btn-ghost" onclick="searchMessages()"><i class="layui-icon layui-icon-search"></i> 搜索</button>
-                <a href="/admin/chat_message" class="btn-ghost" style="margin-left: 8px;">重置</a>
-            </div>
-
-            <table class="layui-table" lay-skin="line">
-                <thead>
-                    <tr>
-                        <th style="width: 60px;">ID</th>
-                        <th>角色</th>
-                        <th>内容摘要</th>
-                        <th>会话</th>
-                        <th>用户</th>
-                        <th>模型 ID</th>
-                        <th>员工 ID</th>
-                        <th>响应时间(s)</th>
-                        <th>Token</th>
-                        <th>创建时间</th>
-                        <th style="width: 160px;">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in messages %}
-                    <tr>
-                        <td>{{ item['id'] }}</td>
-                        <td>
-                            {% if item['role'] == 'user' %}
-                            <span class="layui-badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);">用户</span>
-                            {% else %}
-                            <span class="layui-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">助手</span>
-                            {% end %}
-                        </td>
-                        <td><div class="msg-content" title="{{ item['content'] or '' }}">{{ item['content'] or '-' }}</div></td>
-                        <td>{{ item['session_title'] or item['session_id'] }}</td>
-                        <td>{{ item['username'] or '-' }}</td>
-                        <td>{{ item['model_id'] or '-' }}</td>
-                        <td>{{ item['employee_id'] or '-' }}</td>
-                        <td>{{ item['response_time'] or '-' }}</td>
-                        <td>{{ item['token_count'] or '-' }}</td>
-                        <td>{{ item['created_at'] }}</td>
-                        <td>
-                            <button class="layui-btn layui-btn-xs" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="viewMessage({{ item['id'] }})">详情</button>
-                            <button class="layui-btn layui-btn-xs" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="deleteMessage({{ item['id'] }})">删除</button>
-                        </td>
-                    </tr>
-                    {% end %}
-                    {% if not messages %}
-                    <tr>
-                        <td colspan="11" style="text-align: center; padding: 40px; color: #94a3b8;">暂无对话消息</td>
-                    </tr>
-                    {% end %}
+            <table class="layui-table" lay-skin="line" style="margin:0;">
+                <thead><tr>
+                    <th style="width:60px;">ID</th>
+                    <th style="width:80px;white-space:nowrap;">角色</th>
+                    <th>对话内容</th>
+                    <th style="width:100px;">会话ID</th>
+                    <th style="width:100px;">用户</th>
+                    <th style="width:160px;">创建时间</th>
+                    <th style="width:140px;">操作</th>
+                </tr></thead>
+                <tbody id="convTbody">
+                    <tr class="loading-row"><td colspan="7">
+                        <div class="loading-dots"><span></span><span></span><span></span></div>
+                    </td></tr>
                 </tbody>
             </table>
+            <div id="convPagination" style="margin-top:16px; text-align:right;"></div>
+        </div>
+    </div>
 
-            <div id="pagination" style="margin-top: 20px; text-align: right;"></div>
+    <!-- 会话管理 Tab -->
+    <div class="biz-card" id="sessPanel" {% if tab != 'session' %}style="display:none;"{% end %}>
+        <div class="biz-card-header">
+            <span><i class="layui-icon layui-icon-dialogue" style="color:#3b82f6;"></i> 会话记录</span>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="text" id="sessSearch" placeholder="搜索标题/用户..." class="layui-input dark-input" style="width:240px; height:34px;">
+                <button class="btn-ghost" onclick="loadSessions(1)"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+                <button class="btn-ghost" onclick="sessReset()"><i class="layui-icon layui-icon-refresh"></i> 重置</button>
+            </div>
+        </div>
+        <div class="biz-card-body">
+            <table class="layui-table" lay-skin="line" style="margin:0;">
+                <thead><tr>
+                    <th style="width:60px;">ID</th>
+                    <th>会话标题</th>
+                    <th style="width:100px;">创建用户</th>
+                    <th style="width:80px;">对话条数</th>
+                    <th style="width:160px;">创建时间</th>
+                    <th style="width:180px;">操作</th>
+                </tr></thead>
+                <tbody id="sessTbody">
+                    <tr class="loading-row"><td colspan="6">
+                        <div class="loading-dots"><span></span><span></span><span></span></div>
+                    </td></tr>
+                </tbody>
+            </table>
+            <div id="sessPagination" style="margin-top:16px; text-align:right;"></div>
         </div>
     </div>
 </div>
 
 <script>
-layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
+layui.use(['layer', 'laypage', 'jquery'], function(){
     var layer = layui.layer;
     var laypage = layui.laypage;
     var $ = layui.jquery;
 
-    laypage.render({
-        elem: 'pagination',
-        count: {{ total }},
-        limit: 20,
-        curr: {{ page }},
-        theme: '#2563eb',
-        jump: function(obj, first){
-            if(!first){
-                var search = $('#searchInput').val();
-                var sessionId = $('#sessionIdInput').val();
-                var userId = $('#userIdInput').val();
-                window.location.href = '?page=' + obj.curr + '&search=' + encodeURIComponent(search) + '&session_id=' + encodeURIComponent(sessionId) + '&user_id=' + encodeURIComponent(userId);
-            }
+    // ===== Tab 切换 =====
+    window.switchTab = function(tab){
+        if(tab === 'session'){
+            $('#convPanel').hide();
+            $('#sessPanel').show();
+            $('.tab-btn').removeClass('active');
+            $('.tab-btn:contains("会话管理")').addClass('active');
+            if(!sessLoaded) loadSessions(1);
+        } else {
+            $('#sessPanel').hide();
+            $('#convPanel').show();
+            $('.tab-btn').removeClass('active');
+            $('.tab-btn:contains("对话管理")').addClass('active');
+            if(!convLoaded) loadConversations(1);
         }
-    });
-
-    window.searchMessages = function(){
-        var search = $('#searchInput').val();
-        var sessionId = $('#sessionIdInput').val();
-        var userId = $('#userIdInput').val();
-        window.location.href = '?page=1&search=' + encodeURIComponent(search) + '&session_id=' + encodeURIComponent(sessionId) + '&user_id=' + encodeURIComponent(userId);
     };
 
+    // ===== 对话管理 =====
+    var convLoaded = false;
+    var convCurrentPage = 1;
+
+    window.loadConversations = function(page){
+        convCurrentPage = page;
+        var search = $('#convSearch').val().trim();
+        $('#convTbody').html('<tr class="loading-row"><td colspan="7"><div class="loading-dots"><span></span><span></span><span></span></div></td></tr>');
+
+        var params = '?api=conversations&page=' + page;
+        if(search) params += '&search=' + encodeURIComponent(search);
+
+        fetch('/admin/chat_message' + params)
+            .then(function(r){ return r.json(); })
+            .then(function(res){
+                convLoaded = true;
+                if(res.code === 0){
+                    renderConversations(res.list, res.total, page);
+                } else {
+                    $('#convTbody').html('<tr><td colspan="7" class="empty-tip">加载失败</td></tr>');
+                }
+            })
+            .catch(function(){
+                $('#convTbody').html('<tr><td colspan="7" class="empty-tip">网络错误</td></tr>');
+            });
+    };
+
+    function renderConversations(list, total, page){
+        if(!list || list.length === 0){
+            $('#convTbody').html('<tr><td colspan="7"><div class="empty-tip"><i class="layui-icon layui-icon-ghost"></i>暂无对话记录</div></td></tr>');
+            $('#convPagination').html('');
+            return;
+        }
+        var html = '';
+        list.forEach(function(item){
+            var roleBadge = item.role === 'user'
+                ? '<span class="badge-user">用户</span>'
+                : '<span class="badge-assistant">助手</span>';
+            var preview = item.content_preview || '';
+            html += '<tr>'
+                + '<td>' + item.id + '</td>'
+                + '<td>' + roleBadge + '</td>'
+                + '<td><div class="msg-content" title="' + escapeHtml(item.content || '') + '">' + escapeHtml(preview) + '</div></td>'
+                + '<td>' + (item.session_id || '-') + '</td>'
+                + '<td>' + (item.username || '-') + '</td>'
+                + '<td>' + (item.created_at || '-') + '</td>'
+                + '<td>'
+                + '<button class="btn-xs-green" onclick="viewMessage(' + item.id + ')">详情</button> '
+                + '<button class="btn-xs-red" onclick="deleteMessage(' + item.id + ')">删除</button>'
+                + '</td>'
+                + '</tr>';
+        });
+        $('#convTbody').html(html);
+        renderConvPagination(total, page);
+    }
+
+    function renderConvPagination(total, page){
+        if(total <= 10){ $('#convPagination').html(''); return; }
+        laypage.render({
+            elem: 'convPagination', count: total, limit: 10, curr: page,
+            theme: '#2563eb',
+            jump: function(obj, first){
+                if(!first) loadConversations(obj.curr);
+            }
+        });
+    }
+
+    window.convReset = function(){
+        $('#convSearch').val('');
+        loadConversations(1);
+    };
+
+    // ===== 会话管理 =====
+    var sessLoaded = false;
+    var sessCurrentPage = 1;
+
+    window.loadSessions = function(page){
+        sessCurrentPage = page;
+        var search = $('#sessSearch').val().trim();
+        $('#sessTbody').html('<tr class="loading-row"><td colspan="6"><div class="loading-dots"><span></span><span></span><span></span></div></td></tr>');
+
+        var params = '?api=sessions&page=' + page;
+        if(search) params += '&search=' + encodeURIComponent(search);
+
+        fetch('/admin/chat_message' + params)
+            .then(function(r){ return r.json(); })
+            .then(function(res){
+                sessLoaded = true;
+                if(res.code === 0){
+                    renderSessions(res.list, res.total, page);
+                } else {
+                    $('#sessTbody').html('<tr><td colspan="6" class="empty-tip">加载失败</td></tr>');
+                }
+            })
+            .catch(function(){
+                $('#sessTbody').html('<tr><td colspan="6" class="empty-tip">网络错误</td></tr>');
+            });
+    };
+
+    function renderSessions(list, total, page){
+        if(!list || list.length === 0){
+            $('#sessTbody').html('<tr><td colspan="6"><div class="empty-tip"><i class="layui-icon layui-icon-ghost"></i>暂无会话记录</div></td></tr>');
+            $('#sessPagination').html('');
+            return;
+        }
+        var html = '';
+        list.forEach(function(item){
+            var pinned = item.is_pinned == 1 ? ' <span class="badge-pinned">置顶</span>' : '';
+            html += '<tr>'
+                + '<td>' + item.id + '</td>'
+                + '<td style="font-weight:600;color:#f8fafc;">' + escapeHtml(item.title || '未命名') + pinned + '</td>'
+                + '<td>' + (item.username || item.user_id || '-') + '</td>'
+                + '<td style="color:#60a5fa;font-weight:600;">' + (item.message_count || 0) + '</td>'
+                + '<td>' + (item.created_at || '-') + '</td>'
+                + '<td>'
+                + '<button class="btn-xs-blue" onclick="viewSessionMessages(' + item.id + ')">对话列表</button> '
+                + '<button class="btn-xs-red" onclick="deleteSession(' + item.id + ')">删除</button>'
+                + '</td>'
+                + '</tr>';
+        });
+        $('#sessTbody').html(html);
+        renderSessPagination(total, page);
+    }
+
+    function renderSessPagination(total, page){
+        if(total <= 10){ $('#sessPagination').html(''); return; }
+        laypage.render({
+            elem: 'sessPagination', count: total, limit: 10, curr: page,
+            theme: '#2563eb',
+            jump: function(obj, first){
+                if(!first) loadSessions(obj.curr);
+            }
+        });
+    }
+
+    window.sessReset = function(){
+        $('#sessSearch').val('');
+        loadSessions(1);
+    };
+
+    // ===== 查看详情 =====
     window.viewMessage = function(id){
         $.post('/admin/chat_message', {
-            action: 'get_detail',
+            action: 'get_message_detail',
             id: id,
             _xsrf: getCookie('_xsrf')
         }, function(res){
-            if(res.code == 0){
+            if(res.code === 0){
                 var m = res.data;
-                var html = '<div class="layui-form" style="padding: 20px; color: #e2e8f0;">';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">消息 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + m.id + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">角色</label><div class="layui-input-block"><span class="layui-form-mid">' + (m.role == 'user' ? '用户' : '助手') + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">内容</label><div class="layui-input-block"><pre style="background: #1e293b; padding: 10px; border-radius: 4px; color: #f8fafc; border: 1px solid #334155; white-space: pre-wrap; word-break: break-word;">' + (m.content || '') + '</pre></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">会话 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + m.session_id + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">模型 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + (m.model_id || '-') + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">员工 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + (m.employee_id || '-') + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">响应时间</label><div class="layui-input-block"><span class="layui-form-mid">' + (m.response_time || '-') + ' s</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">Token</label><div class="layui-input-block"><span class="layui-form-mid">' + (m.token_count || '-') + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">创建时间</label><div class="layui-input-block"><span class="layui-form-mid">' + m.created_at + '</span></div></div>';
+                var html = '<div style="padding:20px;color:#e2e8f0;">';
+                html += '<div style="margin-bottom:12px;"><span style="color:#94a3b8;">ID：</span>' + m.id + '　';
+                html += '<span style="color:#94a3b8;">角色：</span>' + (m.role === 'user' ? '用户' : '助手') + '　';
+                html += '<span style="color:#94a3b8;">会话ID：</span>' + m.session_id + '</div>';
+                html += '<pre style="background:#1e293b;padding:12px;border-radius:6px;color:#f8fafc;border:1px solid #334155;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.6;">' + escapeHtml(m.content || '') + '</pre>';
+                html += '<div style="margin-top:12px;color:#64748b;font-size:13px;">创建时间：' + (m.created_at || '-') + '　Token：' + (m.token_count || '-') + '　响应时间：' + (m.response_time || '-') + 's</div>';
                 html += '</div>';
-                layer.open({
-                    type: 1,
-                    title: '消息详情',
-                    content: html,
-                    area: ['600px', '600px'],
-                    btn: ['关闭']
-                });
+                layer.open({ type: 1, title: '对话详情', content: html, area: ['600px', '500px'], btn: ['关闭'] });
             } else {
-                layer.msg(res.msg || '获取数据失败', {icon: 2});
+                layer.msg(res.msg || '获取失败', { icon: 2 });
             }
         });
     };
 
+    // ===== 查看会话对话列表 =====
+    window.viewSessionMessages = function(sessionId){
+        var loadingIndex = layer.load(1);
+        fetch('/admin/chat_message?api=session_messages&session_id=' + sessionId)
+            .then(function(r){ return r.json(); })
+            .then(function(res){
+                layer.close(loadingIndex);
+                if(res.code === 0){
+                    var html = '<div style="padding:16px;max-height:500px;overflow-y:auto;color:#e2e8f0;">';
+                    if(res.list.length === 0){
+                        html += '<div class="empty-tip"><i class="layui-icon layui-icon-ghost"></i>该会话暂无对话记录</div>';
+                    } else {
+                        res.list.forEach(function(m){
+                            var isUser = m.role === 'user';
+                            var bg = isUser ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)';
+                            var name = isUser ? '用户' : '助手';
+                            var color = isUser ? '#60a5fa' : '#34d399';
+                            html += '<div style="background:' + bg + ';border-radius:8px;padding:12px;margin-bottom:10px;border-left:3px solid ' + color + ';">';
+                            html += '<div style="font-size:12px;color:#64748b;margin-bottom:6px;">' + name + ' · ' + (m.created_at || '') + '</div>';
+                            html += '<div style="color:#e2e8f0;line-height:1.6;white-space:pre-wrap;word-break:break-word;">' + escapeHtml(m.content || '') + '</div>';
+                            html += '</div>';
+                        });
+                    }
+                    html += '</div>';
+                    layer.open({ type: 1, title: '会话 #' + sessionId + ' 的对话列表', content: html, area: ['600px', '600px'], btn: ['关闭'] });
+                } else {
+                    layer.msg('加载失败', { icon: 2 });
+                }
+            })
+            .catch(function(){
+                layer.close(loadingIndex);
+                layer.msg('网络错误', { icon: 2 });
+            });
+    };
+
+    // ===== 删除 =====
     window.deleteMessage = function(id){
-        layer.confirm('确定要删除该消息吗？', {icon: 3}, function(index){
+        layer.confirm('确定要删除这条对话吗？', { icon: 3, title: '确认删除' }, function(index){
             $.post('/admin/chat_message', {
-                action: 'delete',
+                action: 'delete_message',
                 id: id,
                 _xsrf: getCookie('_xsrf')
             }, function(res){
-                if(res.code == 0){
-                    layer.msg(res.msg, {icon: 1});
-                    setTimeout(function(){ location.reload(); }, 1000);
+                if(res.code === 0){
+                    layer.msg(res.msg, { icon: 1 });
+                    loadConversations(convCurrentPage);
                 } else {
-                    layer.msg(res.msg, {icon: 2});
+                    layer.msg(res.msg, { icon: 2 });
                 }
             });
             layer.close(index);
         });
     };
+
+    window.deleteSession = function(id){
+        layer.confirm('删除会话将同时删除其所有对话消息，确定继续吗？', { icon: 3, title: '确认删除' }, function(index){
+            $.post('/admin/chat_message', {
+                action: 'delete_session',
+                id: id,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code === 0){
+                    layer.msg(res.msg, { icon: 1 });
+                    loadSessions(sessCurrentPage);
+                } else {
+                    layer.msg(res.msg, { icon: 2 });
+                }
+            });
+            layer.close(index);
+        });
+    };
+
+    // ===== 工具函数 =====
+    function escapeHtml(str){
+        if(!str) return '';
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ===== 回车搜索 =====
+    $('#convSearch').on('keydown', function(e){ if(e.keyCode === 13) loadConversations(1); });
+    $('#sessSearch').on('keydown', function(e){ if(e.keyCode === 13) loadSessions(1); });
+
+    // ===== 初始加载 =====
+    {% if tab == 'session' %}
+        loadSessions(1);
+    {% else %}
+        loadConversations(1);
+    {% end %}
 });
 </script>
 {% end %}

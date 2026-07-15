@@ -212,6 +212,26 @@
     border-bottom-left-radius: 2px;
 }
 
+/* AI 思考中动画 */
+.thinking-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 0;
+}
+.thinking-dots span {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #60a5fa;
+    animation: thinking-bounce 1.3s infinite ease-in-out;
+}
+.thinking-dots span:nth-child(2) { animation-delay: 0.18s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes thinking-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+    30% { transform: translateY(-7px); opacity: 1; }
+}
+
 .chat-input-area {
     padding: 16px;
     background: #1e293b;
@@ -734,7 +754,7 @@ function sendMessage() {
     
     // 准备 AI 消息框
     var aiMsgId = 'msg-' + Date.now();
-    appendMessage('<span class="layui-anim layui-anim-fadein layui-anim-loop">思考中...</span>', 'ai', aiMsgId);
+    appendMessage('<span class="thinking-dots"><span></span><span></span><span></span></span>', 'ai', aiMsgId);
     
     var aiMsgBox = $('#' + aiMsgId);
     var fullResponse = '';

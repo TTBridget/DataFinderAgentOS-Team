@@ -10,12 +10,13 @@ class ChatSessionRepository:
 	"""对话会话仓储"""
 
 	@staticmethod
-	def get_all_sessions(page=1, page_size=20, search_keyword=None, user_id=None):
-		"""后台管理：获取所有会话列表，支持搜索"""
+	def get_all_sessions(page=1, page_size=10, search_keyword=None, user_id=None):
+		"""后台管理：获取所有会话列表（含消息数），支持搜索"""
 		offset = (page - 1) * page_size
 		with get_connection() as conn:
 			query = """
-				SELECT cs.*, u.username as username
+				SELECT cs.*, u.username as username,
+				       (SELECT COUNT(*) FROM chat_messages cm WHERE cm.session_id = cs.id) as message_count
 				FROM chat_sessions cs
 				LEFT JOIN users u ON cs.user_id = u.id
 			"""
@@ -158,7 +159,7 @@ class ChatMessageRepository:
 	"""对话消息仓储"""
 
 	@staticmethod
-	def get_all_messages(page=1, page_size=20, search_keyword=None, session_id=None, user_id=None):
+	def get_all_messages(page=1, page_size=10, search_keyword=None, session_id=None, user_id=None):
 		"""后台管理：获取所有对话消息，支持搜索"""
 		offset = (page - 1) * page_size
 		with get_connection() as conn:

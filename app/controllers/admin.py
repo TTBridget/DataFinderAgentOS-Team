@@ -114,11 +114,25 @@ class AdminLogoutHandler(BaseHandler):
 
 class AdminIndexHandler(AdminBaseHandler):
 	"""后台首页"""
-	
+
 	@tornado.web.authenticated
 	def get(self):
 		login_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-		self.render("admin/index.html", title="后台管理", username=self.current_user, login_time=login_time)
+
+		# 真实统计数据
+		user_count = UserRepository.get_all_users(1, 1)["total"] + AdminRepository.get_all_admins(1, 1)["total"]
+		warehouse_count = DataWarehouseRepository.get_all(1, 1)["total"]
+		employee_count = DigitalEmployeeRepository.get_all(1, 1)["total"]
+		model_count = AiModelRepository.get_all(1, 1)["total"]
+
+		self.render("admin/index.html",
+					title="后台管理",
+					username=self.current_user,
+					login_time=login_time,
+					user_count=user_count,
+					warehouse_count=warehouse_count,
+					employee_count=employee_count,
+					model_count=model_count)
 
 
 class UserManageHandler(AdminBaseHandler):
@@ -1437,23 +1451,11 @@ class SkillManageHandler(AdminBaseHandler):
 
 
 class ChatSessionManageHandler(AdminBaseHandler):
-	"""会话管理"""
+	"""会话管理 - 重定向到统一页面"""
 
 	@tornado.web.authenticated
 	def get(self):
-		page = safe_int(self.get_argument("page", 1), 1)
-		search = self.get_argument("search", "")
-		user_id = safe_int(self.get_argument("user_id", "0"), 0) or None
-		result = ChatSessionRepository.get_all_sessions(page, 20, search, user_id)
-
-		self.render("admin/chat_session.html",
-					title="会话管理",
-					sessions=result["items"],
-					page=page,
-					total=result["total"],
-					search=search,
-					user_id=user_id or "",
-					username=self.current_user)
+		self.redirect("/admin/chat_message?tab=session")
 
 	@tornado.web.authenticated
 	def post(self):
@@ -1474,39 +1476,75 @@ class ChatSessionManageHandler(AdminBaseHandler):
 
 
 class ChatMessageManageHandler(AdminBaseHandler):
-	"""对话管理"""
+	"""对话管理 - 统一页面（对话管理 + 会话管理双 Tab）"""
 
 	@tornado.web.authenticated
 	def get(self):
-		page = safe_int(self.get_argument("page", 1), 1)
-		search = self.get_argument("search", "")
-		session_id = safe_int(self.get_argument("session_id", "0"), 0) or None
-		user_id = safe_int(self.get_argument("user_id", "0"), 0) or None
-		result = ChatMessageRepository.get_all_messages(page, 20, search, session_id, user_id)
+		# AJAX 数据接口
+		api = self.get_argument("api", "")
+		if api == "conversations":
+			page = safe_int(self.get_argument("page", 1), 1)
+			search = self.get_argument("search", "")
+			session_id = safe_int(self.get_argument("session_id", "0"), 0) or None
+			user_id = safe_int(self.get_argument("user_id", "0"), 0) or None
+			result = ChatMessageRepository.get_all_messages(page, 10, search, session_id, user_id)
+			items = []
+			for row in result["items"]:
+				d = dict(row)
+				d["content_preview"] = (d.get("content") or "")[:20] + ("..." if len(d.get("content") or "") > 20 else "")
+				items.append(d)
+			self.write({"code": 0, "list": items, "total": result["total"], "page": page})
+			return
 
+		if api == "sessions":
+			page = safe_int(self.get_argument("page", 1), 1)
+			search = self.get_argument("search", "")
+			user_id = safe_int(self.get_argument("user_id", "0"), 0) or None
+			result = ChatSessionRepository.get_all_sessions(page, 10, search, user_id)
+			items = [dict(row) for row in result["items"]]
+			self.write({"code": 0, "list": items, "total": result["total"], "page": page})
+			return
+
+		if api == "session_messages":
+			session_id = safe_int(self.get_argument("session_id", "0"), 0)
+			messages = ChatMessageRepository.get_session_messages(session_id)
+			items = [dict(row) for row in messages]
+			self.write({"code": 0, "list": items})
+			return
+
+		# 渲染页面
+		tab = self.get_argument("tab", "conversation")
 		self.render("admin/chat_message.html",
 					title="对话管理",
-					messages=result["items"],
-					page=page,
-					total=result["total"],
-					search=search,
-					session_id=session_id or "",
-					user_id=user_id or "",
+					tab=tab,
 					username=self.current_user)
 
 	@tornado.web.authenticated
 	def post(self):
 		action = self.get_body_argument("action", "")
 
-		if action == "delete":
+		if action == "delete_message":
 			message_id = safe_int(self.get_body_argument("id", "0"), 0)
 			ChatMessageRepository.admin_delete(message_id)
 			self.write({"code": 0, "msg": "删除成功"})
 
-		elif action == "get_detail":
+		elif action == "delete_session":
+			session_id = safe_int(self.get_body_argument("id", "0"), 0)
+			ChatSessionRepository.admin_delete(session_id)
+			self.write({"code": 0, "msg": "删除成功"})
+
+		elif action == "get_message_detail":
 			message_id = safe_int(self.get_body_argument("id", "0"), 0)
 			message = ChatMessageRepository.get_by_id(message_id)
 			if message:
 				self.write({"code": 0, "data": dict(message)})
 			else:
 				self.write({"code": 1, "msg": "消息不存在"})
+
+		elif action == "get_session_detail":
+			session_id = safe_int(self.get_body_argument("id", "0"), 0)
+			session = ChatSessionRepository.get_by_id(session_id)
+			if session:
+				self.write({"code": 0, "data": dict(session)})
+			else:
+				self.write({"code": 1, "msg": "会话不存在"})
