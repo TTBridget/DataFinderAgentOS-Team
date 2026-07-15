@@ -83,6 +83,23 @@ def _migrate_menu_structure(conn):
 			(2, func_id)
 		)
 	
+	# 8. 添加数智大屏功能
+	dashboard_exists = conn.execute("SELECT 1 FROM functions WHERE id = ?", (16,)).fetchone()
+	if not dashboard_exists:
+		conn.execute(
+			"INSERT INTO functions (id, name, code, icon, route, parent_id, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)",
+			(16, "数智大屏", "dashboard", "layui-icon-screen-full", "/admin/dashboard", 0, 4)
+		)
+		conn.execute(
+			"INSERT INTO role_functions (role_id, function_id) VALUES (?, ?)",
+			(2, 16)
+		)
+		conn.execute(
+			"INSERT INTO menus (function_id, sort_order, is_visible) VALUES (?, ?, ?)",
+			(16, 4, 1)
+		)
+		print("数智大屏功能创建成功！")
+	
 	print("菜单结构迁移完成")
 
 def init_db():
@@ -215,6 +232,7 @@ def init_db():
 				(9, "智能应用", "ai", "layui-icon-util", None, 0, 3),
 				(10, "模型引擎", "engine", "layui-icon-engine", "/admin/ai", 9, 1),
 				(11, "数字员工", "digital", "layui-icon-user", "/admin/digital", 9, 2),
+				(16, "数智大屏", "dashboard", "layui-icon-screen-full", "/admin/dashboard", 0, 4),
 			]
 			
 			for func in default_functions:
@@ -403,45 +421,74 @@ def init_db():
 		except sqlite3.OperationalError:
 			pass
 		
-		# 检查是否存在默认百度新闻数据源
-		source_exists = conn.execute(
-			"SELECT 1 FROM data_sources WHERE name = ?",
-			("百度新闻",)
-		).fetchone()
+		common_headers = """{
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0",
+			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+			"Accept-Language": "zh-CN,zh;q=0.9,zh-TW;q=0.8,zh-HK;q=0.7,en-US;q=0.6,en;q=0.5",
+			"Accept-Encoding": "gzip, deflate, br, zstd",
+			"Connection": "keep-alive",
+			"Upgrade-Insecure-Requests": "1",
+			"Sec-Fetch-Dest": "document",
+			"Sec-Fetch-Mode": "navigate",
+			"Sec-Fetch-Site": "none",
+			"Sec-Fetch-User": "?1"
+		}"""
 		
-		if not source_exists:
-			# 不存在，创建默认百度新闻数据源
-			baidu_headers = """{
-				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0",
-				"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-				"Accept-Language": "zh-CN,zh;q=0.9,zh-TW;q=0.8,zh-HK;q=0.7,en-US;q=0.6,en;q=0.5",
-				"Accept-Encoding": "gzip, deflate, br, zstd",
-				"Connection": "keep-alive",
-				"Upgrade-Insecure-Requests": "1",
-				"Sec-Fetch-Dest": "document",
-				"Sec-Fetch-Mode": "navigate",
-				"Sec-Fetch-Site": "none",
-				"Sec-Fetch-User": "?1"
-			}"""
-			
-			conn.execute(
-				"""
-				INSERT INTO data_sources (name, description, base_url, path_template, headers, is_enabled, sort_order)
-				VALUES (?, ?, ?, ?, ?, ?, ?)
-				""",
-				(
-					"百度新闻",
-					"百度新闻搜索采集源",
-					"https://www.baidu.com",
-					"/s?rtt=1&bsst=1&cl=2&tn=news&rsv_dl=ns_pc&word={keyword}&pn={page}",
-					baidu_headers,
-					1,
-					1
+		default_sources = [
+			(
+				"百度新闻",
+				"百度新闻搜索采集源",
+				"https://www.baidu.com",
+				"/s?rtt=1&bsst=1&cl=2&tn=news&rsv_dl=ns_pc&word={keyword}&pn={page}",
+				common_headers,
+				1,
+				1
+			),
+			(
+				"百度搜索",
+				"百度网页搜索采集源",
+				"https://www.baidu.com",
+				"/s?wd={keyword}&pn={page}",
+				common_headers,
+				1,
+				2
+			),
+			(
+				"微博热搜",
+				"微博热搜榜采集源",
+				"https://s.weibo.com",
+				"/top/summary?cate=realtimehot",
+				common_headers,
+				1,
+				3
+			),
+			(
+				"微博搜索",
+				"微博关键词搜索采集源",
+				"https://s.weibo.com",
+				"/weibo?q={keyword}&page={page}",
+				common_headers,
+				1,
+				4
+			),
+		]
+		
+		for name, desc, base_url, path_template, headers, is_enabled, sort_order in default_sources:
+			source_exists = conn.execute(
+				"SELECT 1 FROM data_sources WHERE name = ?",
+				(name,)
+			).fetchone()
+			if not source_exists:
+				conn.execute(
+					"""
+					INSERT INTO data_sources (name, description, base_url, path_template, headers, is_enabled, sort_order)
+					VALUES (?, ?, ?, ?, ?, ?, ?)
+					""",
+					(name, desc, base_url, path_template, headers, is_enabled, sort_order)
 				)
-			)
-			print("默认百度新闻数据源创建成功！")
-		else:
-			print("默认百度新闻数据源已存在")
+				print(f"默认{name}数据源创建成功！")
+			else:
+				print(f"默认{name}数据源已存在")
 
 		# 创建模型引擎表
 		conn.execute(

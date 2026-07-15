@@ -217,9 +217,15 @@ body {
 
     <div class="grid-container">
         <div class="card stat-card">
+<<<<<<< Updated upstream
             <div class="card-header"><i class="layui-icon layui-icon-data"></i> 仓库总数</div>
             <div class="card-body">
                 <div class="stat-value" id="stat-warehouse">--</div>
+=======
+            <div class="card-header"><i class="layui-icon layui-icon-data"></i> 采集总数</div>
+            <div class="card-body">
+                <div class="stat-value" id="stat-collected">--</div>
+>>>>>>> Stashed changes
                 <div class="stat-label">条</div>
             </div>
         </div>
@@ -233,9 +239,15 @@ body {
         </div>
 
         <div class="card stat-card">
+<<<<<<< Updated upstream
             <div class="card-header"><i class="layui-icon layui-icon-praise"></i> 深度采集</div>
             <div class="card-body">
                 <div class="stat-value" id="stat-deep">--</div>
+=======
+            <div class="card-header"><i class="layui-icon layui-icon-table"></i> 数据仓库</div>
+            <div class="card-body">
+                <div class="stat-value" id="stat-warehouse">--</div>
+>>>>>>> Stashed changes
                 <div class="stat-label">条</div>
             </div>
         </div>
@@ -774,6 +786,7 @@ function updateEmployeeData(data) {
 }
 
 function fetchData() {
+<<<<<<< Updated upstream
     fetch('/admin/dashboard/data?action=overview')
         .then(res => res.json())
         .then(res => {
@@ -815,15 +828,68 @@ function fetchData() {
         .then(res => res.json())
         .then(res => { if (res.code === 0) updateEmployeeData(res.data); })
         .catch(err => console.error('Employee stats fetch error:', err));
+=======
+    $.get('/admin/dashboard/data', { action: 'overview' }, function(res) {
+        if (res.code === 0) {
+            $('#stat-collected').text(res.data.total_collected);
+            $('#stat-sources').text(res.data.total_sources);
+            $('#stat-warehouse').text(res.data.total_warehouse);
+            $('#stat-users').text(res.data.total_users + res.data.total_admins);
+        }
+    });
+
+    $.get('/admin/dashboard/data', { action: 'keyword_cloud' }, function(res) {
+        if (res.code === 0) {
+            updateWordcloudData(res.data);
+        }
+    });
+
+    $.get('/admin/dashboard/data', { action: 'collect_trend' }, function(res) {
+        if (res.code === 0) {
+            updateTrendData(res.data);
+        }
+    });
+
+    $.get('/admin/dashboard/data', { action: 'source_stats' }, function(res) {
+        if (res.code === 0) {
+            updateSourceData(res.data);
+        }
+    });
+
+    $.get('/admin/dashboard/data', { action: 'warehouse_stats' }, function(res) {
+        if (res.code === 0) {
+            updateWarehouseData(res.data);
+        }
+    });
+
+    $.get('/admin/dashboard/data', { action: 'user_stats' }, function(res) {
+        if (res.code === 0) {
+            updateUserData(res.data);
+        }
+    });
+
+    $.get('/admin/dashboard/data', { action: 'employee_stats' }, function(res) {
+        if (res.code === 0) {
+            updateEmployeeData(res.data);
+        }
+    });
+>>>>>>> Stashed changes
 
     updateGlobeData();
 }
 
+<<<<<<< Updated upstream
 document.addEventListener('DOMContentLoaded', function() {
+=======
+$(document).ready(function() {
+>>>>>>> Stashed changes
     initCharts();
     fetchData();
     updateInterval = setInterval(fetchData, 30000);
 });
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 </script>
 {% end %}

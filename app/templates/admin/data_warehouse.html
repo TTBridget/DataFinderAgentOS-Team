@@ -243,6 +243,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
     var currentDeepCollectId = null;
     var currentTaskId = null;
     var pollingTimer = null;
+    var lastTaskStatus = null;
     
     function loadEmployees(selectId) {
         return fetch('/admin/data_warehouse', {
@@ -387,6 +388,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                 }).then(res => res.json())
                 .then(data => {
                     if(data.code === 0) {
+                        lastTaskStatus = data.data.status;
                         renderTaskStatus(data.data);
                         if(data.data.status === 'completed' || data.data.status === 'failed') {
                             stopPolling();
@@ -417,8 +419,9 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
         statusBadge.className = 'layui-badge ' + config.class;
         statusBadge.textContent = config.text;
         
-        document.getElementById('progressText').textContent = task.progress + '%';
-        document.getElementById('progressBar').style.width = task.progress + '%';
+        var progress = task.progress || 0;
+        document.getElementById('progressText').textContent = progress + '%';
+        document.getElementById('progressBar').style.width = progress + '%';
         
         if(task.employee_name) {
             document.getElementById('employeeName').textContent = '执行员工: ' + task.employee_name;
@@ -462,6 +465,14 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
             document.getElementById('resultContent').innerHTML = resultHtml;
             document.getElementById('resultPanel').style.display = 'block';
         }
+        
+        if(task.status === 'completed' && lastTaskStatus !== 'completed') {
+            layer.msg('深度采集完成，页面将自动刷新...', {icon: 1, time: 2000});
+            setTimeout(function(){
+                location.reload();
+            }, 2500);
+        }
+        lastTaskStatus = task.status;
     }
     
     window.openDeepDataViewer = function(id) {
