@@ -103,6 +103,21 @@ DataFinderAgentOS 是一款政务智能瞭望与智能问数系统，基于 Torn
    - **模板层**：login.html、register.html、index.html
    - **数据库表**：chat_sessions（含 `is_pinned`）、chat_messages（含 `is_edited`、`response_time`、`token_count`）
 
+10. **任务6.5：数智大屏（v0.1 新增）**
+    - **核心数字展示**：仓库总数、数据源总数、用户总数、深度采集条数，数据来源于系统真实数据库（data_warehouse、data_sources、users、admins 表）
+    - **3D 地球可视化**：使用 ECharts-GL 渲染交互式 3D 地球，展示全球数据节点及连线动画
+    - **关键词云**：根据数据仓库中 keyword 字段的频率统计生成词云，使用 ECharts-Wordcloud 插件
+    - **采集趋势与预测**：按日期统计数据仓库更新量，展示采集趋势曲线，并基于最近 7 天均值预测下一天数据量
+    - **数据源分布**：环形图展示各数据源在数据仓库中的数据占比
+    - **数据仓库状态**：柱状图展示已深度采集与未深度采集的数据量对比
+    - **数字员工统计**：仪表盘展示数字员工启用率，以及各类型员工分布
+    - **数据更新规则**：页面加载时立即请求数据，之后每隔 30 秒自动刷新；数字采用平滑动画过渡，避免闪烁
+    - **加载状态**：数据返回前显示 shimmer 加载占位效果，不显示 0 或空白
+    - **企业风格设计**：深色主题、渐变背景、毛玻璃效果、响应式布局
+    - **控制器**：DashboardHandler、DashboardDataHandler（`app/controllers/dashboard.py`）
+    - **模板层**：`app/templates/admin/dashboard.html`（独立页面，不继承 base.html）
+    - **路由配置**：`/admin/dashboard`、`/admin/dashboard/data?action=xxx`
+
 ## 需求跟踪
 
 ### 用户侧-前台功能需求
@@ -145,6 +160,7 @@ DataFinderAgentOS 是一款政务智能瞭望与智能问数系统，基于 Torn
 | 数据仓库 | 已完成 | 高 | 保存并管理瞭望采集到的数据，支持列表/搜索/删除/深度采集（含任务面板、进度、步骤、日志、结果）、批量采集、更新采集 |
 | 数字员工 | 已完成 | 高 | 支持两种员工类型（LLM 和 API），完整的管理功能及预留扩展 |
 | 模型引擎 | 已完成 | 高 | AI 模型引擎的管理和配置，支持OpenAI API范式、SSE流式对话测试 |
+| 数智大屏 | 已完成 | 高 | 采集数据及系统运营的数据化呈现，包含3D地球、词云、采集趋势预测、数据源分布、仓库状态、数字员工统计等可视化图表 |
 
 ## 瞭望管理系统说明
 

@@ -7,12 +7,16 @@ DataFinderAgentOS
     │   │       ├── auth.py           # 用户认证控制器
     │   │       ├── base.py           # 基础控制器类
     │   │       ├── chat.py           # 前台对话与数字员工调度控制器
+    │   │       ├── dashboard.py      # 数智大屏控制器
     │   │       ├── home.py           # 前台首页控制器
+    │   │       ├── public_sentiment.py # 舆情监控控制器
     │   │       └── __init__.py
     │   │
     │   ├── models
     │   │       ├── admin.py          # 管理员模型
     │   │       ├── ai_model.py       # AI模型引擎模型
+    │   │       ├── alert.py          # 告警模型
+    │   │       ├── api_interface.py  # API接口模型
     │   │       ├── chat.py           # 前台对话会话与消息模型
     │   │       ├── collected_data.py # 采集数据模型
     │   │       ├── data_query.py     # 安全数据库查询执行器（AI问数）
@@ -23,6 +27,7 @@ DataFinderAgentOS
     │   │       ├── function.py       # 功能模块模型
     │   │       ├── menu.py           # 菜单模型
     │   │       ├── role.py           # 角色模型
+    │   │       ├── skill.py          # 技能模型
     │   │       ├── user.py           # 用户模型
     │   │       └── __init__.py
     │   │
@@ -63,7 +68,8 @@ DataFinderAgentOS
     │   │       ├── watch.html        # 瞭望中心页
     │   │       ├── ai_model.html     # 模型引擎管理页
     │   │       ├── data_warehouse.html # 数据仓库页
-    │   │       └── digital_employee.html # 数字员工管理页
+    │   │       ├── digital_employee.html # 数字员工管理页
+    │   │       ├── dashboard.html       # 数智大屏页
     │   │
     │   └── __init__.py
     │

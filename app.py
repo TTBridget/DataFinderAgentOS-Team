@@ -1,12 +1,11 @@
 import os
-import tornado.ioloop 
-import tornado.web 
+import tornado.ioloop
+import tornado.web
 from tornado.httpserver import HTTPServer
 
 from app.controllers.auth import LoginHandler, LogoutHandler, RegisterHandler
 from app.controllers.home import IndexHandler
 from app.controllers.chat import ChatHandler, ChatSessionHandler, ChatMessageHandler, ChatResendHandler, ChatExportHandler, ModelListHandler, EmployeeListHandler
-<<<<<<< HEAD
 from app.controllers.admin import (
     AdminLoginHandler, AdminLogoutHandler, AdminIndexHandler, UserManageHandler,
     RoleManageHandler, FunctionManageHandler, MenuManageHandler, DataSourceManageHandler,
@@ -14,10 +13,8 @@ from app.controllers.admin import (
     DigitalEmployeeManageHandler, ApiInterfaceManageHandler, SkillManageHandler,
     ChatSessionManageHandler, ChatMessageManageHandler
 )
-=======
-from app.controllers.admin import AdminLoginHandler, AdminLogoutHandler, AdminIndexHandler, UserManageHandler, RoleManageHandler, FunctionManageHandler, MenuManageHandler, DataSourceManageHandler, WatchManageHandler, AiModelManageHandler, AiModelChatHandler, DataWarehouseManageHandler, DigitalEmployeeManageHandler
+from app.controllers.dashboard import DashboardHandler, DashboardDataHandler
 from app.controllers.public_sentiment import PublicSentimentHandler, PublicSentimentStatsHandler, PublicSentimentAlertsHandler, PublicSentimentAlertDetailHandler, PublicSentimentAlertActionHandler, PublicSentimentTrendHandler, PublicSentimentHotTopicsHandler, PublicSentimentRiskLevelHandler, PublicSentimentSensitiveWordsHandler, PublicSentimentScanHandler
->>>>>>> main
 from app.models.db import init_db
 
 
@@ -46,7 +43,7 @@ def webapp():
 		(r"/logout", LogoutHandler),
 		(r"/register", RegisterHandler),
 		(r"/index", IndexHandler),
-		
+
 		# 前台API路由
 		(r"/api/chat", ChatHandler),
 		(r"/api/chat/sessions", ChatSessionHandler),
@@ -55,7 +52,7 @@ def webapp():
 		(r"/api/chat/export", ChatExportHandler),
 		(r"/api/models", ModelListHandler),
 		(r"/api/employees", EmployeeListHandler),
-		
+
 		#后台路由：http://host:port/admin/
 		(r"/admin/login", AdminLoginHandler),
 		(r"/admin/logout", AdminLogoutHandler),
@@ -74,7 +71,10 @@ def webapp():
 		(r"/admin/chat_message", ChatMessageManageHandler),
 		(r"/admin/ai", AiModelManageHandler),
 		(r"/admin/ai/chat", AiModelChatHandler),
-		
+
+		(r"/admin/dashboard", DashboardHandler),
+		(r"/admin/dashboard/data", DashboardDataHandler),
+
 		(r"/admin/public_sentiment", PublicSentimentHandler),
 		(r"/admin/public_sentiment/stats", PublicSentimentStatsHandler),
 		(r"/admin/public_sentiment/alerts", PublicSentimentAlertsHandler),

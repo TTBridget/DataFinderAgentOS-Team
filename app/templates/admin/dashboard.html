@@ -1,715 +1,642 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>数智大屏</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts-gl/2.0.9/echarts-gl.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts-wordcloud/2.1.0/echarts-wordcloud.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0e1a;
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
 
-{% block body %}
-<style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+        /* ===== 全局背景 ===== */
+        .dashboard-bg {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(37,99,235,0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(139,92,246,0.10) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(16,185,129,0.04) 0%, transparent 70%),
+                linear-gradient(180deg, #0a0e1a 0%, #111827 50%, #0a0e1a 100%);
+            z-index: -1;
+        }
+        /* 网格线背景 */
+        .dashboard-bg::after {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(51,65,85,0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(51,65,85,0.08) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
 
-body {
-    background: #0a0e17;
-    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-    color: #fff;
-    overflow-x: hidden;
-}
+        /* ===== 顶部标题 ===== */
+        .header {
+            text-align: center;
+            padding: 24px 0 16px;
+            position: relative;
+        }
+        .header h1 {
+            font-size: 38px; font-weight: 800;
+            letter-spacing: 10px;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .subtitle {
+            color: #64748b; font-size: 13px; margin-top: 6px;
+            letter-spacing: 2px;
+        }
+        .header .clock {
+            position: absolute; right: 30px; top: 50%;
+            transform: translateY(-50%);
+            color: #475569; font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+        .header .back-btn {
+            position: absolute; left: 30px; top: 50%;
+            transform: translateY(-50%);
+            color: #64748b; font-size: 14px;
+            text-decoration: none;
+            padding: 6px 16px;
+            border: 1px solid rgba(71,85,105,0.4);
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+        .header .back-btn:hover {
+            color: #93c5fd;
+            border-color: rgba(93,135,253,0.5);
+        }
 
-.dashboard-container {
-    min-height: 100vh;
-    padding: 20px;
-    background: linear-gradient(135deg, #0a0e17 0%, #1a1f35 50%, #0a0e17 100%);
-    position: relative;
-}
+        /* ===== 核心数字卡片 ===== */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            padding: 0 24px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: rgba(15,23,42,0.7);
+            border: 1px solid rgba(51,65,85,0.4);
+            border-radius: 12px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(8px);
+            transition: border-color 0.3s;
+        }
+        .stat-card:hover {
+            border-color: rgba(59,130,246,0.4);
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            border-radius: 12px 12px 0 0;
+        }
+        .stat-card:nth-child(1)::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+        .stat-card:nth-child(2)::before { background: linear-gradient(90deg, #10b981, #34d399); }
+        .stat-card:nth-child(3)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .stat-card:nth-child(4)::before { background: linear-gradient(90deg, #ec4899, #f472b6); }
 
-.dashboard-container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: 
-        radial-gradient(circle at 20% 80%, rgba(37, 99, 235, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 70%);
-    pointer-events: none;
-}
+        .stat-card .stat-icon {
+            position: absolute; top: 20px; right: 20px;
+            font-size: 36px; opacity: 0.15;
+        }
+        .stat-card .stat-label {
+            font-size: 13px; color: #94a3b8;
+            margin-bottom: 8px; letter-spacing: 1px;
+        }
+        .stat-card .stat-number {
+            font-size: 42px; font-weight: 800;
+            line-height: 1.2;
+            font-family: 'DIN Alternate', 'Helvetica Neue', sans-serif;
+        }
+        .stat-card:nth-child(1) .stat-number { color: #60a5fa; }
+        .stat-card:nth-child(2) .stat-number { color: #34d399; }
+        .stat-card:nth-child(3) .stat-number { color: #fbbf24; }
+        .stat-card:nth-child(4) .stat-number { color: #f472b6; }
+        .stat-card .stat-unit {
+            font-size: 14px; color: #64748b; margin-left: 4px;
+        }
 
-.header {
-    text-align: center;
-    padding: 20px 0;
-    position: relative;
-    z-index: 10;
-}
+        /* 加载占位 */
+        .stat-loading {
+            display: inline-block;
+            width: 80px; height: 36px;
+            background: linear-gradient(90deg, rgba(51,65,85,0.3) 25%, rgba(71,85,105,0.5) 50%, rgba(51,65,85,0.3) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 6px;
+            vertical-align: middle;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
 
-.header h1 {
-    font-size: 36px;
-    font-weight: 700;
-    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: 8px;
-}
+        /* ===== 图表网格 ===== */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+            padding: 0 24px 24px;
+        }
+        .chart-card {
+            background: rgba(15,23,42,0.6);
+            border: 1px solid rgba(51,65,85,0.4);
+            border-radius: 12px;
+            overflow: hidden;
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+        }
+        .chart-card .card-title {
+            padding: 12px 16px;
+            font-size: 14px; font-weight: 600;
+            color: #cbd5e1;
+            border-bottom: 1px solid rgba(51,65,85,0.3);
+            display: flex; align-items: center; gap: 8px;
+            flex-shrink: 0;
+        }
+        .chart-card .card-title::before {
+            content: '';
+            width: 3px; height: 14px;
+            border-radius: 2px;
+            background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+        }
+        .chart-card .card-body {
+            flex: 1; padding: 8px;
+            position: relative;
+            min-height: 0;
+        }
+        .chart-card .card-body .echart {
+            width: 100%; height: 100%;
+            min-height: 200px;
+        }
+        .chart-card .chart-loading {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #475569; font-size: 14px;
+        }
+        .chart-card .chart-loading .dot {
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #3b82f6;
+            margin: 0 2px;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .chart-card .chart-loading .dot:nth-child(1) { animation-delay: -0.32s; }
+        .chart-card .chart-loading .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
 
-.header p {
-    color: #94a3b8;
-    margin-top: 8px;
-    font-size: 14px;
-}
+        /* 布局 */
+        .col-3 { grid-column: span 3; }
+        .col-4 { grid-column: span 4; }
+        .col-6 { grid-column: span 6; }
+        .col-12 { grid-column: span 12; }
+        .row-h-280 { min-height: 280px; }
+        .row-h-320 { min-height: 320px; }
 
-.grid-container {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: minmax(200px, auto);
-    gap: 16px;
-    position: relative;
-    z-index: 10;
-}
+        /* ===== 3D 地球 ===== */
+        #chart-globe { width: 100%; height: 100%; min-height: 300px; }
 
-.card {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(51, 65, 85, 0.5);
-    border-radius: 12px;
-    backdrop-filter: blur(10px);
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
+        /* ===== 响应式 ===== */
+        @media (max-width: 1200px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .col-6, .col-4 { grid-column: span 12; }
+            .col-3 { grid-column: span 6; }
+        }
+        @media (max-width: 768px) {
+            .stats-row { grid-template-columns: 1fr; }
+            .col-3 { grid-column: span 12; }
+            .header h1 { font-size: 24px; letter-spacing: 4px; }
+            .header .back-btn, .header .clock { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-bg"></div>
 
-.card:hover {
-    border-color: rgba(59, 130, 246, 0.5);
-    box-shadow: 0 0 30px rgba(59, 130, 246, 0.1);
-}
-
-.card-header {
-    padding: 12px 16px;
-    background: rgba(30, 41, 59, 0.5);
-    border-bottom: 1px solid rgba(51, 65, 85, 0.3);
-    font-size: 14px;
-    font-weight: 600;
-    color: #cbd5e1;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.card-header i {
-    color: #3b82f6;
-}
-
-.card-body {
-    padding: 16px;
-    height: calc(100% - 52px);
-}
-
-.stat-card {
-    grid-column: span 3;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
-.stat-value {
-    font-size: 42px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #3b82f6, #60a5fa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.stat-label {
-    font-size: 14px;
-    color: #94a3b8;
-    margin-top: 8px;
-}
-
-.stat-card:nth-child(2) .stat-value {
-    background: linear-gradient(135deg, #10b981, #34d399);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.stat-card:nth-child(3) .stat-value {
-    background: linear-gradient(135deg, #f59e0b, #fbbf24);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.stat-card:nth-child(4) .stat-value {
-    background: linear-gradient(135deg, #ec4899, #f472b6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.chart-card {
-    grid-column: span 6;
-}
-
-.chart-card-full {
-    grid-column: span 12;
-}
-
-.chart-card-half {
-    grid-column: span 4;
-}
-
-.globe-card {
-    grid-column: span 6;
-    grid-row: span 2;
-}
-
-.wordcloud-card {
-    grid-column: span 6;
-}
-
-#globeChart {
-    width: 100%;
-    height: 100%;
-    min-height: 400px;
-}
-
-.chart-container {
-    width: 100%;
-    height: calc(100% - 20px);
-    min-height: 200px;
-}
-
-@media (max-width: 1200px) {
-    .stat-card {
-        grid-column: span 6;
-    }
-    .chart-card {
-        grid-column: span 12;
-    }
-    .globe-card {
-        grid-column: span 12;
-    }
-    .wordcloud-card {
-        grid-column: span 12;
-    }
-    .chart-card-half {
-        grid-column: span 6;
-    }
-}
-
-@media (max-width: 768px) {
-    .header h1 {
-        font-size: 24px;
-        letter-spacing: 4px;
-    }
-    .stat-card {
-        grid-column: span 12;
-    }
-    .chart-card-half {
-        grid-column: span 12;
-    }
-}
-</style>
-
-<div class="dashboard-container">
     <div class="header">
-        <h1>📊 数智大屏</h1>
-        <p>数据采集与系统运营实时监控中心</p>
+        <a href="/admin/" class="back-btn">← 返回后台</a>
+        <h1>数智大屏</h1>
+        <p class="subtitle">DATA INTELLIGENCE DASHBOARD</p>
+        <span class="clock" id="clock"></span>
     </div>
 
-    <div class="grid-container">
-        <div class="card stat-card">
-            <div class="card-header"><i class="layui-icon layui-icon-data"></i> 仓库总数</div>
+    <!-- 核心数字 -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon">📦</div>
+            <div class="stat-label">仓库总数</div>
+            <div><span class="stat-number" id="num-warehouse"><span class="stat-loading"></span></span><span class="stat-unit">条</span></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔌</div>
+            <div class="stat-label">数据源总数</div>
+            <div><span class="stat-number" id="num-sources"><span class="stat-loading"></span></span><span class="stat-unit">个</span></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">👤</div>
+            <div class="stat-label">用户总数</div>
+            <div><span class="stat-number" id="num-users"><span class="stat-loading"></span></span><span class="stat-unit">人</span></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔍</div>
+            <div class="stat-label">深度采集</div>
+            <div><span class="stat-number" id="num-deep"><span class="stat-loading"></span></span><span class="stat-unit">条</span></div>
+        </div>
+    </div>
+
+    <!-- 图表区 -->
+    <div class="chart-grid">
+        <!-- 3D 地球 -->
+        <div class="chart-card col-6 row-h-320">
+            <div class="card-title">3D 地球可视化</div>
             <div class="card-body">
-                <div class="stat-value" id="stat-warehouse">--</div>
-                <div class="stat-label">条</div>
+                <div id="chart-globe"></div>
             </div>
         </div>
 
-        <div class="card stat-card">
-            <div class="card-header"><i class="layui-icon layui-icon-database"></i> 数据源</div>
+        <!-- 关键词云 -->
+        <div class="chart-card col-6 row-h-320">
+            <div class="card-title">关键词云</div>
             <div class="card-body">
-                <div class="stat-value" id="stat-sources">--</div>
-                <div class="stat-label">个</div>
+                <div id="chart-wordcloud" class="echart"></div>
             </div>
         </div>
 
-        <div class="card stat-card">
-            <div class="card-header"><i class="layui-icon layui-icon-praise"></i> 深度采集</div>
+        <!-- 采集趋势 + 预测 -->
+        <div class="chart-card col-12 row-h-280">
+            <div class="card-title">采集趋势与预测</div>
             <div class="card-body">
-                <div class="stat-value" id="stat-deep">--</div>
-                <div class="stat-label">条</div>
+                <div id="chart-trend" class="echart"></div>
             </div>
         </div>
 
-        <div class="card stat-card">
-            <div class="card-header"><i class="layui-icon layui-icon-user"></i> 用户总数</div>
+        <!-- 数据源分布 -->
+        <div class="chart-card col-4 row-h-280">
+            <div class="card-title">数据源分布</div>
             <div class="card-body">
-                <div class="stat-value" id="stat-users">--</div>
-                <div class="stat-label">人</div>
+                <div id="chart-source" class="echart"></div>
             </div>
         </div>
 
-        <div class="card globe-card">
-            <div class="card-header"><i class="layui-icon layui-icon-website"></i> 3D 地球可视化</div>
+        <!-- 数据仓库状态 -->
+        <div class="chart-card col-4 row-h-280">
+            <div class="card-title">数据仓库状态</div>
             <div class="card-body">
-                <div id="globeChart"></div>
+                <div id="chart-warehouse" class="echart"></div>
             </div>
         </div>
 
-        <div class="card wordcloud-card">
-            <div class="card-header"><i class="layui-icon layui-icon-fonts"></i> 关键词云</div>
+        <!-- 数字员工 -->
+        <div class="chart-card col-4 row-h-280">
+            <div class="card-title">数字员工</div>
             <div class="card-body">
-                <div class="chart-container" id="wordcloudChart"></div>
-            </div>
-        </div>
-
-        <div class="card chart-card">
-            <div class="card-header"><i class="layui-icon layui-icon-line"></i> 采集趋势</div>
-            <div class="card-body">
-                <div class="chart-container" id="trendChart"></div>
-            </div>
-        </div>
-
-        <div class="card chart-card">
-            <div class="card-header"><i class="layui-icon layui-icon-pie"></i> 数据源分布</div>
-            <div class="card-body">
-                <div class="chart-container" id="sourceChart"></div>
-            </div>
-        </div>
-
-        <div class="card chart-card-half">
-            <div class="card-header"><i class="layui-icon layui-icon-table"></i> 数据仓库状态</div>
-            <div class="card-body">
-                <div class="chart-container" id="warehouseChart"></div>
-            </div>
-        </div>
-
-        <div class="card chart-card-half">
-            <div class="card-header"><i class="layui-icon layui-icon-user"></i> 用户统计</div>
-            <div class="card-body">
-                <div class="chart-container" id="userChart"></div>
-            </div>
-        </div>
-
-        <div class="card chart-card-half">
-            <div class="card-header"><i class="layui-icon layui-icon-robot"></i> 数字员工</div>
-            <div class="card-body">
-                <div class="chart-container" id="employeeChart"></div>
+                <div id="chart-employee" class="echart"></div>
             </div>
         </div>
     </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
 
 <script>
 var charts = {};
-var updateInterval = null;
+var refreshTimer = null;
 
+/* ===== 时钟 ===== */
+function updateClock() {
+    var d = new Date();
+    var pad = function(n) { return n < 10 ? '0' + n : n; };
+    document.getElementById('clock').textContent =
+        d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
+        ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ===== 数字平滑过渡 ===== */
+function animateNumber(el, target) {
+    var current = parseInt(el.dataset.value || '0', 10);
+    if (current === target) return;
+    var start = current;
+    var diff = target - start;
+    var duration = 800;
+    var startTime = performance.now();
+
+    function step(now) {
+        var elapsed = now - startTime;
+        var progress = Math.min(elapsed / duration, 1);
+        // easeOutCubic
+        var eased = 1 - Math.pow(1 - progress, 3);
+        var val = Math.round(start + diff * eased);
+        el.textContent = val.toLocaleString();
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        } else {
+            el.dataset.value = target;
+        }
+    }
+    requestAnimationFrame(step);
+}
+
+/* ===== 初始化所有图表 ===== */
 function initCharts() {
-    charts.globe = echarts.init(document.getElementById('globeChart'));
-    charts.wordcloud = echarts.init(document.getElementById('wordcloudChart'));
-    charts.trend = echarts.init(document.getElementById('trendChart'));
-    charts.source = echarts.init(document.getElementById('sourceChart'));
-    charts.warehouse = echarts.init(document.getElementById('warehouseChart'));
-    charts.user = echarts.init(document.getElementById('userChart'));
-    charts.employee = echarts.init(document.getElementById('employeeChart'));
+    charts.globe = echarts.init(document.getElementById('chart-globe'));
+    charts.wordcloud = echarts.init(document.getElementById('chart-wordcloud'));
+    charts.trend = echarts.init(document.getElementById('chart-trend'));
+    charts.source = echarts.init(document.getElementById('chart-source'));
+    charts.warehouse = echarts.init(document.getElementById('chart-warehouse'));
+    charts.employee = echarts.init(document.getElementById('chart-employee'));
 
-    initGlobeChart();
-    initWordcloudChart();
-    initTrendChart();
-    initSourceChart();
-    initWarehouseChart();
-    initUserChart();
-    initEmployeeChart();
+    setupGlobe();
+    setupWordcloud();
+    setupTrend();
+    setupSource();
+    setupWarehouse();
+    setupEmployee();
 
     window.addEventListener('resize', function() {
-        for (var key in charts) {
-            charts[key].resize();
-        }
+        for (var k in charts) { charts[k].resize(); }
     });
 }
 
-function initGlobeChart() {
-    var option = {
+/* ===== 3D 地球 ===== */
+function setupGlobe() {
+    var cities = [
+        [116.46, 39.92, '北京'], [121.48, 31.22, '上海'],
+        [113.26, 23.13, '广州'], [114.07, 22.62, '深圳'],
+        [104.06, 30.57, '成都'], [120.19, 30.26, '杭州'],
+        [114.31, 30.52, '武汉'], [108.95, 34.27, '西安'],
+        [139.69, 35.69, '东京'], [-73.94, 40.67, '纽约'],
+        [-0.12, 51.51, '伦敦'], [2.35, 48.86, '巴黎'],
+        [151.21, -33.87, '悉尼'], [103.82, 1.35, '新加坡'],
+    ];
+    var scatterData = cities.map(function(c, i) {
+        return {
+            name: c[2],
+            value: [c[0], c[1], Math.random() * 80 + 20],
+            symbolSize: Math.random() * 10 + 6,
+            itemStyle: {
+                color: ['#3b82f6','#10b981','#f59e0b','#ec4899','#8b5cf6'][i % 5],
+                opacity: 0.9,
+                shadowBlur: 15,
+                shadowColor: 'rgba(59,130,246,0.6)'
+            }
+        };
+    });
+    // 连线
+    var lines = [];
+    for (var i = 1; i < cities.length; i++) {
+        lines.push({
+            coords: [[cities[0][0], cities[0][1]], [cities[i][0], cities[i][1]]]
+        });
+    }
+
+    charts.globe.setOption({
         backgroundColor: 'transparent',
         globe: {
-            baseTexture: 'https://cdn.jsdelivr.net/gh/apache/echarts-gl@main/test/data/world.jpg',
-            heightTexture: 'https://cdn.jsdelivr.net/gh/apache/echarts-gl@main/test/data/bathymetry_bw_composite_4k.jpg',
+            baseTexture: 'https://cdn.bootcdn.net/ajax/libs/echarts-gl/2.0.9/test/data/world.jpg',
+            heightTexture: 'https://cdn.bootcdn.net/ajax/libs/echarts-gl/2.0.9/test/data/bathymetry_bw_composite_4k.jpg',
             shading: 'realistic',
             environment: 'none',
-            realisticMaterial: {
-                roughness: 0.8,
-                metalness: 0.1
-            },
+            realisticMaterial: { roughness: 0.9, metalness: 0 },
             postEffect: {
                 enable: true,
-                bloom: {
-                    enable: true,
-                    bloomIntensity: 0.1
-                },
-                ambientOcclusion: {
-                    enable: true,
-                    quality: 'high'
-                }
+                bloom: { enable: true, bloomIntensity: 0.15 },
+                ambientOcclusion: { enable: true, quality: 'high' }
             },
             light: {
-                ambient: {
-                    intensity: 0.4
-                },
-                directional: {
-                    intensity: 0.8
-                },
-                pointLight: {
-                    enable: true,
-                    intensity: 0.5
-                }
+                ambient: { intensity: 0.5 },
+                main: { intensity: 1.2 },
             },
             viewControl: {
                 autoRotate: true,
-                autoRotateSpeed: 2,
-                distance: 180,
-                minDistance: 100,
-                maxDistance: 300
+                autoRotateSpeed: 3,
+                distance: 180
             },
-            layers: [{
-                type: 'atmosphere',
-                effect: 'blend',
-                color: '#3b82f6',
-                opacity: 0.3
-            }]
+            atmosphere: { show: true, offset: 5, color: '#3b82f6', glowPower: 3 }
         },
         series: [{
             type: 'scatter3D',
             coordinateSystem: 'globe',
-            symbolSize: 8,
-            itemStyle: {
-                color: '#3b82f6',
-                shadowBlur: 10,
-                shadowColor: 'rgba(59, 130, 246, 0.5)'
-            },
-            data: []
-        }]
-    };
-    charts.globe.setOption(option);
-}
-
-function updateGlobeData(data) {
-    var locations = [
-        { name: '北京', coord: [116.46, 39.92], value: 100 },
-        { name: '上海', coord: [121.48, 31.22], value: 80 },
-        { name: '广州', coord: [113.26, 23.13], value: 60 },
-        { name: '深圳', coord: [114.07, 22.62], value: 50 },
-        { name: '成都', coord: [104.06, 30.57], value: 40 },
-        { name: '杭州', coord: [120.19, 30.26], value: 35 },
-        { name: '武汉', coord: [114.31, 30.52], value: 30 },
-        { name: '西安', coord: [108.95, 34.27], value: 25 },
-        { name: '东京', coord: [139.69, 35.69], value: 20 },
-        { name: '纽约', coord: [-73.94, 40.67], value: 15 },
-        { name: '伦敦', coord: [-0.12, 51.51], value: 12 },
-        { name: '巴黎', coord: [2.35, 48.86], value: 10 },
-        { name: '悉尼', coord: [151.21, -33.87], value: 8 },
-        { name: '新加坡', coord: [103.82, 1.35], value: 6 },
-    ];
-
-    var scatterData = locations.map(function(item) {
-        return {
-            name: item.name,
-            value: [item.coord[0], item.coord[1], Math.random() * 50 + 50],
-            symbolSize: Math.random() * 8 + 5,
-            itemStyle: {
-                color: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'][Math.floor(Math.random() * 5)]
-            }
-        };
-    });
-
-    charts.globe.setOption({
-        series: [{
-            type: 'scatter3D',
+            blendMode: 'lighter',
+            symbolSize: 10,
             data: scatterData
+        }, {
+            type: 'lines3D',
+            coordinateSystem: 'globe',
+            blendMode: 'lighter',
+            effect: {
+                show: true,
+                trailWidth: 2,
+                trailLength: 0.5,
+                trailOpacity: 0.8,
+                trailColor: '#60a5fa'
+            },
+            lineStyle: { width: 1, color: '#3b82f6', opacity: 0.4 },
+            data: lines
         }]
     });
 }
 
-function initWordcloudChart() {
-    var option = {
+/* ===== 词云 ===== */
+function setupWordcloud() {
+    charts.wordcloud.setOption({
         backgroundColor: 'transparent',
+        tooltip: {
+            backgroundColor: 'rgba(15,23,42,0.9)',
+            borderColor: '#334155',
+            textStyle: { color: '#fff', fontSize: 13 }
+        },
         series: [{
             type: 'wordCloud',
             gridSize: 8,
-            sizeRange: [12, 48],
-            rotationRange: [-90, 90],
-            rotationStep: 30,
+            sizeRange: [14, 50],
+            rotationRange: [-45, 45],
+            rotationStep: 45,
             shape: 'circle',
             drawOutOfBound: false,
             textStyle: {
                 fontFamily: 'Microsoft YaHei',
                 fontWeight: 'bold',
                 color: function() {
-                    return 'rgb(' + [
-                        Math.round(Math.random() * 160 + 50),
-                        Math.round(Math.random() * 160 + 50),
-                        Math.round(Math.random() * 160 + 50)
-                    ].join(',') + ')';
+                    var colors = ['#60a5fa','#34d399','#fbbf24','#f472b6','#a78bfa','#22d3ee','#fb923c'];
+                    return colors[Math.floor(Math.random() * colors.length)];
                 }
             },
             emphasis: {
-                textStyle: {
-                    shadowBlur: 10,
-                    shadowColor: 'rgba(0, 0, 0, 0.5)'
-                }
+                textStyle: { shadowBlur: 10, shadowColor: 'rgba(96,165,250,0.5)' }
             },
             data: []
-        }]
-    };
-    charts.wordcloud.setOption(option);
-}
-
-function updateWordcloudData(data) {
-    charts.wordcloud.setOption({
-        series: [{
-            data: data
         }]
     });
 }
 
-function initTrendChart() {
-    var option = {
+/* ===== 采集趋势 ===== */
+function setupTrend() {
+    charts.trend.setOption({
         backgroundColor: 'transparent',
-        grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '3%',
-            top: '10%',
-            containLabel: true
-        },
+        grid: { left: '2%', right: '3%', bottom: '3%', top: '12%', containLabel: true },
         tooltip: {
             trigger: 'axis',
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            backgroundColor: 'rgba(15,23,42,0.95)',
             borderColor: '#334155',
-            textStyle: { color: '#fff' }
+            textStyle: { color: '#e2e8f0' }
+        },
+        legend: {
+            data: ['实际采集', '预测'],
+            textStyle: { color: '#94a3b8' },
+            top: 4, right: 10
         },
         xAxis: {
             type: 'category',
             boundaryGap: false,
             axisLine: { lineStyle: { color: '#334155' } },
-            axisLabel: { color: '#94a3b8', fontSize: 11 }
+            axisLabel: { color: '#64748b', fontSize: 11, rotate: 30 }
         },
         yAxis: {
             type: 'value',
-            axisLine: { lineStyle: { color: '#334155' } },
-            axisLabel: { color: '#94a3b8' },
-            splitLine: { lineStyle: { color: 'rgba(51, 65, 85, 0.3)' } }
+            axisLine: { show: false },
+            axisLabel: { color: '#64748b' },
+            splitLine: { lineStyle: { color: 'rgba(51,65,85,0.2)' } }
         },
         series: [{
+            name: '实际采集',
             type: 'line',
             smooth: true,
             symbol: 'circle',
             symbolSize: 6,
             lineStyle: { color: '#3b82f6', width: 3 },
-            itemStyle: { color: '#3b82f6' },
+            itemStyle: { color: '#3b82f6', borderColor: '#fff', borderWidth: 1 },
             areaStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
-                    { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
+                    { offset: 0, color: 'rgba(59,130,246,0.35)' },
+                    { offset: 1, color: 'rgba(59,130,246,0.02)' }
                 ])
             },
             data: []
+        }, {
+            name: '预测',
+            type: 'line',
+            smooth: true,
+            symbol: 'diamond',
+            symbolSize: 8,
+            lineStyle: { color: '#f59e0b', width: 2, type: 'dashed' },
+            itemStyle: { color: '#f59e0b' },
+            data: []
         }]
-    };
-    charts.trend.setOption(option);
-}
-
-function updateTrendData(data) {
-    var dates = data.map(function(item) { return item.date; });
-    var counts = data.map(function(item) { return item.count; });
-
-    charts.trend.setOption({
-        xAxis: { data: dates },
-        series: [{ data: counts }]
     });
 }
 
-function initSourceChart() {
-    var option = {
+/* ===== 数据源分布 ===== */
+function setupSource() {
+    charts.source.setOption({
         backgroundColor: 'transparent',
         tooltip: {
             trigger: 'item',
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            backgroundColor: 'rgba(15,23,42,0.95)',
             borderColor: '#334155',
-            textStyle: { color: '#fff' }
+            textStyle: { color: '#e2e8f0' },
+            formatter: '{b}: {c} ({d}%)'
         },
         legend: {
             orient: 'horizontal',
-            bottom: '5%',
-            textStyle: { color: '#94a3b8' }
+            bottom: 5,
+            textStyle: { color: '#94a3b8', fontSize: 11 }
         },
         series: [{
             type: 'pie',
-            radius: ['40%', '70%'],
-            center: ['50%', '45%'],
+            radius: ['35%', '65%'],
+            center: ['50%', '42%'],
             avoidLabelOverlap: true,
             itemStyle: {
-                borderRadius: 8,
+                borderRadius: 6,
                 borderColor: '#0f172a',
                 borderWidth: 2
             },
-            label: {
-                show: false
-            },
+            label: { show: false },
             emphasis: {
-                label: {
-                    show: true,
-                    fontSize: 14,
-                    fontWeight: 'bold',
-                    color: '#fff'
-                }
+                label: { show: true, fontSize: 13, fontWeight: 'bold', color: '#fff' }
             },
             labelLine: { show: false },
             data: []
         }]
-    };
-    charts.source.setOption(option);
-}
-
-function updateSourceData(data) {
-    var colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#84cc16'];
-    var pieData = data.map(function(item, index) {
-        return {
-            name: item.name,
-            value: item.count,
-            itemStyle: { color: colors[index % colors.length] }
-        };
-    });
-
-    charts.source.setOption({
-        series: [{ data: pieData }]
     });
 }
 
-function initWarehouseChart() {
-    var option = {
+/* ===== 数据仓库状态 ===== */
+function setupWarehouse() {
+    charts.warehouse.setOption({
         backgroundColor: 'transparent',
-        grid: {
-            left: '10%',
-            right: '10%',
-            bottom: '5%',
-            top: '15%',
-            containLabel: true
-        },
+        grid: { left: '3%', right: '5%', bottom: '3%', top: '15%', containLabel: true },
         tooltip: {
             trigger: 'axis',
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            backgroundColor: 'rgba(15,23,42,0.95)',
             borderColor: '#334155',
-            textStyle: { color: '#fff' }
+            textStyle: { color: '#e2e8f0' }
         },
         xAxis: {
             type: 'category',
             data: ['已深度采集', '未深度采集'],
             axisLine: { lineStyle: { color: '#334155' } },
-            axisLabel: { color: '#94a3b8' }
+            axisLabel: { color: '#94a3b8', fontSize: 12 }
         },
         yAxis: {
             type: 'value',
-            axisLine: { lineStyle: { color: '#334155' } },
-            axisLabel: { color: '#94a3b8' },
-            splitLine: { lineStyle: { color: 'rgba(51, 65, 85, 0.3)' } }
+            axisLine: { show: false },
+            axisLabel: { color: '#64748b' },
+            splitLine: { lineStyle: { color: 'rgba(51,65,85,0.2)' } }
         },
         series: [{
             type: 'bar',
-            barWidth: '50%',
+            barWidth: '40%',
             itemStyle: {
-                borderRadius: [4, 4, 0, 0],
-                color: function(params) {
-                    return params.dataIndex === 0 ? '#10b981' : '#64748b';
+                borderRadius: [6, 6, 0, 0],
+                color: function(p) {
+                    return p.dataIndex === 0
+                        ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#10b981' },
+                            { offset: 1, color: '#059669' }
+                          ])
+                        : new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#64748b' },
+                            { offset: 1, color: '#475569' }
+                          ]);
                 }
             },
+            label: {
+                show: true,
+                position: 'top',
+                color: '#94a3b8',
+                fontSize: 13,
+                fontWeight: 'bold'
+            },
             data: []
-        }]
-    };
-    charts.warehouse.setOption(option);
-}
-
-function updateWarehouseData(data) {
-    charts.warehouse.setOption({
-        series: [{
-            data: [data.deep_collected, data.not_deep_collected]
         }]
     });
 }
 
-function initUserChart() {
-    var option = {
-        backgroundColor: 'transparent',
-        grid: {
-            left: '10%',
-            right: '10%',
-            bottom: '5%',
-            top: '15%',
-            containLabel: true
-        },
-        tooltip: {
-            trigger: 'axis',
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-            borderColor: '#334155',
-            textStyle: { color: '#fff' }
-        },
-        xAxis: {
-            type: 'category',
-            data: ['普通用户', '管理员'],
-            axisLine: { lineStyle: { color: '#334155' } },
-            axisLabel: { color: '#94a3b8' }
-        },
-        yAxis: {
-            type: 'value',
-            axisLine: { lineStyle: { color: '#334155' } },
-            axisLabel: { color: '#94a3b8' },
-            splitLine: { lineStyle: { color: 'rgba(51, 65, 85, 0.3)' } }
-        },
-        series: [{
-            name: '启用',
-            type: 'bar',
-            stack: 'total',
-            barWidth: '50%',
-            itemStyle: {
-                borderRadius: [4, 4, 0, 0],
-                color: '#10b981'
-            },
-            data: []
-        }, {
-            name: '禁用',
-            type: 'bar',
-            stack: 'total',
-            barWidth: '50%',
-            itemStyle: {
-                borderRadius: [4, 4, 0, 0],
-                color: '#ef4444'
-            },
-            data: []
-        }]
-    };
-    charts.user.setOption(option);
-}
-
-function updateUserData(data) {
-    charts.user.setOption({
-        series: [{
-            data: [data.user_enabled, data.admin_enabled]
-        }, {
-            data: [data.user_disabled, data.admin_disabled]
-        }]
-    });
-}
-
-function initEmployeeChart() {
-    var option = {
+/* ===== 数字员工 ===== */
+function setupEmployee() {
+    charts.employee.setOption({
         backgroundColor: 'transparent',
         tooltip: {
             trigger: 'item',
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            backgroundColor: 'rgba(15,23,42,0.95)',
             borderColor: '#334155',
-            textStyle: { color: '#fff' }
+            textStyle: { color: '#e2e8f0' }
         },
         series: [{
             type: 'gauge',
@@ -718,111 +645,168 @@ function initEmployeeChart() {
             min: 0,
             max: 100,
             splitNumber: 5,
-            axisLine: {
-                lineStyle: {
-                    width: 12,
-                    color: [
-                        [0.3, '#ef4444'],
-                        [0.7, '#f59e0b'],
-                        [1, '#10b981']
-                    ]
+            progress: {
+                show: true,
+                width: 14,
+                roundCap: true,
+                itemStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                        { offset: 0, color: '#3b82f6' },
+                        { offset: 1, color: '#10b981' }
+                    ])
                 }
             },
-            pointer: {
-                itemStyle: { color: '#fff' },
-                length: '60%',
-                width: 4
+            axisLine: {
+                roundCap: true,
+                lineStyle: { width: 14, color: [[1, 'rgba(51,65,85,0.3)']] }
             },
+            pointer: { show: false },
             axisTick: { show: false },
-            splitLine: {
-                length: 10,
-                lineStyle: { color: '#fff', width: 2 }
-            },
-            axisLabel: {
-                color: '#94a3b8',
-                distance: 20,
-                fontSize: 10
-            },
+            splitLine: { show: false },
+            axisLabel: { show: false },
             detail: {
                 valueAnimation: true,
                 formatter: '{value}%',
-                color: '#fff',
-                fontSize: 20,
-                fontWeight: 'bold'
+                color: '#e2e8f0',
+                fontSize: 28,
+                fontWeight: 'bold',
+                offsetCenter: [0, '0%']
             },
             title: {
-                offsetCenter: [0, '75%'],
-                color: '#94a3b8',
+                offsetCenter: [0, '40%'],
+                color: '#64748b',
                 fontSize: 12
             },
-            data: [{
-                value: 0,
-                name: '员工启用率'
-            }]
-        }]
-    };
-    charts.employee.setOption(option);
-}
-
-function updateEmployeeData(data) {
-    var rate = data.total > 0 ? Math.round((data.enabled / data.total) * 100) : 0;
-    charts.employee.setOption({
-        series: [{
-            data: [{ value: rate, name: '员工启用率' }]
+            data: [{ value: 0, name: '员工启用率' }]
         }]
     });
 }
 
+/* ===== 数据更新 ===== */
 function fetchData() {
+    // 核心数字
     fetch('/admin/dashboard/data?action=overview')
-        .then(res => res.json())
-        .then(res => {
-            if (res.code === 0) {
-                document.getElementById('stat-warehouse').textContent = res.data.total_warehouse;
-                document.getElementById('stat-sources').textContent = res.data.total_sources;
-                document.getElementById('stat-deep').textContent = res.data.deep_collected;
-                document.getElementById('stat-users').textContent = res.data.total_users + res.data.total_admins;
-            }
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.code !== 0) return;
+            animateNumber(document.getElementById('num-warehouse'), res.data.total_warehouse);
+            animateNumber(document.getElementById('num-sources'), res.data.total_sources);
+            animateNumber(document.getElementById('num-users'), res.data.total_users);
+            animateNumber(document.getElementById('num-deep'), res.data.deep_collected);
         })
-        .catch(err => console.error('Overview fetch error:', err));
+        .catch(function(e) { console.error('overview:', e); });
 
+    // 词云
     fetch('/admin/dashboard/data?action=keyword_cloud')
-        .then(res => res.json())
-        .then(res => { if (res.code === 0) updateWordcloudData(res.data); })
-        .catch(err => console.error('Keyword cloud fetch error:', err));
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.code !== 0) return;
+            if (res.data.length === 0) {
+                charts.wordcloud.setOption({
+                    title: {
+                        text: '暂无关键词数据',
+                        left: 'center', top: 'center',
+                        textStyle: { color: '#475569', fontSize: 14, fontWeight: 'normal' }
+                    }
+                });
+                return;
+            }
+            charts.wordcloud.setOption({
+                title: { text: '' },
+                series: [{ data: res.data }]
+            });
+        })
+        .catch(function(e) { console.error('wordcloud:', e); });
 
+    // 采集趋势
     fetch('/admin/dashboard/data?action=collect_trend')
-        .then(res => res.json())
-        .then(res => { if (res.code === 0) updateTrendData(res.data); })
-        .catch(err => console.error('Trend fetch error:', err));
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.code !== 0) return;
+            var dates = [], actual = [], predicted = [];
+            res.data.forEach(function(d) {
+                dates.push(d.date.substring(5));
+                if (d.predicted) {
+                    predicted.push(d.count);
+                    actual.push(null);
+                } else {
+                    actual.push(d.count);
+                    predicted.push(null);
+                }
+            });
+            // 连接最后一个实际值到预测值
+            for (var i = 0; i < actual.length; i++) {
+                if (actual[i] === null && i > 0 && actual[i-1] !== null) {
+                    predicted[i-1] = actual[i-1];
+                    break;
+                }
+            }
+            charts.trend.setOption({
+                xAxis: { data: dates },
+                series: [{ data: actual }, { data: predicted }]
+            });
+        })
+        .catch(function(e) { console.error('trend:', e); });
 
+    // 数据源分布
     fetch('/admin/dashboard/data?action=source_stats')
-        .then(res => res.json())
-        .then(res => { if (res.code === 0) updateSourceData(res.data); })
-        .catch(err => console.error('Source stats fetch error:', err));
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.code !== 0) return;
+            var colors = ['#3b82f6','#10b981','#f59e0b','#ec4899','#8b5cf6','#06b6d4','#fb923c'];
+            var pieData = res.data.map(function(item, i) {
+                return {
+                    name: item.name,
+                    value: item.count,
+                    itemStyle: { color: colors[i % colors.length] }
+                };
+            });
+            charts.source.setOption({ series: [{ data: pieData }] });
+        })
+        .catch(function(e) { console.error('source:', e); });
 
+    // 仓库状态
     fetch('/admin/dashboard/data?action=warehouse_stats')
-        .then(res => res.json())
-        .then(res => { if (res.code === 0) updateWarehouseData(res.data); })
-        .catch(err => console.error('Warehouse stats fetch error:', err));
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.code !== 0) return;
+            charts.warehouse.setOption({
+                series: [{
+                    data: [
+                        { value: res.data.deep_collected },
+                        { value: res.data.not_deep_collected }
+                    ]
+                }]
+            });
+        })
+        .catch(function(e) { console.error('warehouse:', e); });
 
-    fetch('/admin/dashboard/data?action=user_stats')
-        .then(res => res.json())
-        .then(res => { if (res.code === 0) updateUserData(res.data); })
-        .catch(err => console.error('User stats fetch error:', err));
-
+    // 数字员工
     fetch('/admin/dashboard/data?action=employee_stats')
-        .then(res => res.json())
-        .then(res => { if (res.code === 0) updateEmployeeData(res.data); })
-        .catch(err => console.error('Employee stats fetch error:', err));
-
-    updateGlobeData();
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.code !== 0) return;
+            var rate = res.data.total > 0
+                ? Math.round((res.data.enabled / res.data.total) * 100)
+                : 0;
+            charts.employee.setOption({
+                series: [{
+                    data: [{
+                        value: rate,
+                        name: '员工启用率\n(' + res.data.enabled + '/' + res.data.total + ')'
+                    }]
+                }]
+            });
+        })
+        .catch(function(e) { console.error('employee:', e); });
 }
 
+/* ===== 启动 ===== */
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     fetchData();
-    updateInterval = setInterval(fetchData, 30000);
+    refreshTimer = setInterval(fetchData, 30000);
 });
 </script>
-{% end %}
+</body>
+</html>
