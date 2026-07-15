@@ -3,7 +3,6 @@ security.py - 安全工具函数
 提供输入转换、URL 校验、SSRF 防护等通用安全能力
 """
 import ipaddress
-import os
 import re
 import socket
 import urllib.parse
@@ -19,8 +18,6 @@ LLM_HOST_ALLOWLIST = {
     "api.moonshot.cn",
     "api.qwen.aliyun.com",
     "api.baichuan-ai.com",
-    "aigc-api.aitoolcore.com",
-    "apihub.agnes-ai.com",
     "api.spark-api.com",
     "api.minimax.chat",
     "api.cohere.com",
@@ -87,11 +84,11 @@ def is_private_ip(host: str) -> bool:
         return True
 
 
-def validate_http_url(url: str, allow_empty: bool = False, allowlist: Optional[set] = None, allow_private: bool = False) -> bool:
+def validate_http_url(url: str, allow_empty: bool = False, allowlist: Optional[set] = None) -> bool:
     """
     校验 URL 是否安全（用于防止 SSRF）
     - 仅允许 http/https 协议
-    - 默认禁止私有/内部 IP 地址（allow_private=True 时放行）
+    - 禁止私有/内部 IP 地址
     - 如果提供 allowlist，则目标主机必须在白名单内
     """
     if not url:
@@ -114,7 +111,7 @@ def validate_http_url(url: str, allow_empty: bool = False, allowlist: Optional[s
         return False
 
     # 检查 IP 类型
-    if not allow_private and is_private_ip(host):
+    if is_private_ip(host):
         return False
 
     # 白名单检查
@@ -134,13 +131,8 @@ def validate_http_url(url: str, allow_empty: bool = False, allowlist: Optional[s
 
 
 def validate_llm_base_url(base_url: str) -> bool:
-    """校验 LLM base_url 是否安全。DEBUG 模式下允许本地/内网地址，方便接入 Ollama/vLLM 等本地模型。"""
-    debug = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
-    return validate_http_url(
-        base_url,
-        allowlist=None if debug else LLM_HOST_ALLOWLIST,
-        allow_private=debug
-    )
+    """校验 LLM base_url 是否安全"""
+    return validate_http_url(base_url, allowlist=LLM_HOST_ALLOWLIST)
 
 
 def validate_employee_api_url(api_url: str) -> bool:

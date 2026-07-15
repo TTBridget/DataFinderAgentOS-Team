@@ -6,6 +6,7 @@ from tornado.httpserver import HTTPServer
 from app.controllers.auth import LoginHandler, LogoutHandler, RegisterHandler
 from app.controllers.home import IndexHandler
 from app.controllers.chat import ChatHandler, ChatSessionHandler, ChatMessageHandler, ChatResendHandler, ChatExportHandler, ModelListHandler, EmployeeListHandler
+<<<<<<< HEAD
 from app.controllers.admin import (
     AdminLoginHandler, AdminLogoutHandler, AdminIndexHandler, UserManageHandler,
     RoleManageHandler, FunctionManageHandler, MenuManageHandler, DataSourceManageHandler,
@@ -13,6 +14,10 @@ from app.controllers.admin import (
     DigitalEmployeeManageHandler, ApiInterfaceManageHandler, SkillManageHandler,
     ChatSessionManageHandler, ChatMessageManageHandler
 )
+=======
+from app.controllers.admin import AdminLoginHandler, AdminLogoutHandler, AdminIndexHandler, UserManageHandler, RoleManageHandler, FunctionManageHandler, MenuManageHandler, DataSourceManageHandler, WatchManageHandler, AiModelManageHandler, AiModelChatHandler, DataWarehouseManageHandler, DigitalEmployeeManageHandler
+from app.controllers.public_sentiment import PublicSentimentHandler, PublicSentimentStatsHandler, PublicSentimentAlertsHandler, PublicSentimentAlertDetailHandler, PublicSentimentAlertActionHandler, PublicSentimentTrendHandler, PublicSentimentHotTopicsHandler, PublicSentimentRiskLevelHandler, PublicSentimentSensitiveWordsHandler, PublicSentimentScanHandler
+>>>>>>> main
 from app.models.db import init_db
 
 
@@ -69,6 +74,17 @@ def webapp():
 		(r"/admin/chat_message", ChatMessageManageHandler),
 		(r"/admin/ai", AiModelManageHandler),
 		(r"/admin/ai/chat", AiModelChatHandler),
+		
+		(r"/admin/public_sentiment", PublicSentimentHandler),
+		(r"/admin/public_sentiment/stats", PublicSentimentStatsHandler),
+		(r"/admin/public_sentiment/alerts", PublicSentimentAlertsHandler),
+		(r"/admin/public_sentiment/alert/(\d+)", PublicSentimentAlertDetailHandler),
+		(r"/admin/public_sentiment/alert_action", PublicSentimentAlertActionHandler),
+		(r"/admin/public_sentiment/trend", PublicSentimentTrendHandler),
+		(r"/admin/public_sentiment/hot_topics", PublicSentimentHotTopicsHandler),
+		(r"/admin/public_sentiment/risk_level", PublicSentimentRiskLevelHandler),
+		(r"/admin/public_sentiment/sensitive_words", PublicSentimentSensitiveWordsHandler),
+		(r"/admin/public_sentiment/scan", PublicSentimentScanHandler),
 	],
 	**settings
 	)
