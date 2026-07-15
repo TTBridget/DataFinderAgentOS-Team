@@ -1,0 +1,45 @@
+卷 Windows-SSD 的文件夹 PATH 列表
+卷序列号为 000000DD 203E:2214
+C:.
+└─DataFinderAgentOS
+    │  app.py
+    │  
+    ├─app
+    │  ├─controllers
+    │  │      auth.py
+    │  │      base.py
+    │  │      home.py
+    │  │      __init__.py
+    │  │      
+    │  ├─models
+    │  │      dp.py
+    │  │      user.py
+    │  │      __init__.py
+    │  │      
+    │  ├─static
+    │  │  ├─css
+    │  │  │      base.css
+    │  │  │      
+    │  │  ├─dist
+    │  │  └─js
+    │  │          base.js
+    │  │          
+    │  └─templates
+    │      │  base.html
+    │      │  index.html
+    │      │  login.html
+    │      │  register.html
+    │      │  
+    │      └─admin
+    │              base.html
+    │              index.html
+    │              login.html
+    │              
+    ├─config
+    ├─database
+    ├─docs
+    │      project_tree.txt
+    │      
+    ├─skills
+    ├─test
+    └─venv                
