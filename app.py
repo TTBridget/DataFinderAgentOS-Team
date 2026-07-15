@@ -7,6 +7,7 @@ from app.controllers.auth import LoginHandler, LogoutHandler, RegisterHandler
 from app.controllers.home import IndexHandler
 from app.controllers.chat import ChatHandler, ChatSessionHandler, ChatMessageHandler, ChatResendHandler, ChatExportHandler, ModelListHandler, EmployeeListHandler
 from app.controllers.admin import AdminLoginHandler, AdminLogoutHandler, AdminIndexHandler, UserManageHandler, RoleManageHandler, FunctionManageHandler, MenuManageHandler, DataSourceManageHandler, WatchManageHandler, AiModelManageHandler, AiModelChatHandler, DataWarehouseManageHandler, DigitalEmployeeManageHandler
+from app.controllers.dashboard import DashboardHandler, DashboardDataHandler
 from app.controllers.public_sentiment import PublicSentimentHandler, PublicSentimentStatsHandler, PublicSentimentAlertsHandler, PublicSentimentAlertDetailHandler, PublicSentimentAlertActionHandler, PublicSentimentTrendHandler, PublicSentimentHotTopicsHandler, PublicSentimentRiskLevelHandler, PublicSentimentSensitiveWordsHandler, PublicSentimentScanHandler
 from app.models.db import init_db
 
@@ -60,6 +61,9 @@ def webapp():
 		(r"/admin/digital", DigitalEmployeeManageHandler),
 		(r"/admin/ai", AiModelManageHandler),
 		(r"/admin/ai/chat", AiModelChatHandler),
+
+		(r"/admin/dashboard", DashboardHandler),
+		(r"/admin/dashboard/data", DashboardDataHandler),
 		
 		(r"/admin/public_sentiment", PublicSentimentHandler),
 		(r"/admin/public_sentiment/stats", PublicSentimentStatsHandler),
