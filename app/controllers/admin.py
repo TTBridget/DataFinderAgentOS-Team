@@ -504,16 +504,25 @@ class WatchManageHandler(AdminBaseHandler):
 	def get(self):
 		page = safe_int(self.get_argument("page", 1), 1)
 		keyword = self.get_argument("keyword", "")
+		source_ids_str = self.get_argument("source_ids", "")
 		
 		# 获取已启用的数据源
 		sources = DataSourceRepository.get_enabled()
 		
-		# 获取采集结果
-		result = CollectedDataRepository.get_all(page, 12, keyword)
+		# 解析选中的瞭源ID；未传则默认展示全部
+		if source_ids_str:
+			selected_source_ids = [safe_int(x) for x in source_ids_str.split(",") if x]
+		else:
+			selected_source_ids = [s["id"] for s in sources]
+		
+		# 获取采集结果（按关键词+瞭源过滤）
+		result = CollectedDataRepository.get_all(page, 12, keyword, selected_source_ids)
 		
 		self.render("admin/watch.html", title="瞭望中心", 
 				   data_sources=sources,
 				   collected_data=result["items"],
+				   selected_source_ids=selected_source_ids,
+				   keyword=keyword,
 				   page=page,
 				   total=result["total"],
 				   username=self.current_user)

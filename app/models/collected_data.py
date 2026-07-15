@@ -11,19 +11,30 @@ from bs4 import BeautifulSoup
 
 class CollectedDataRepository:
 	@staticmethod
-	def get_all(page=1, per_page=12, keyword=""):
+	def get_all(page=1, per_page=12, keyword="", source_ids=None):
 		offset = (page - 1) * per_page
 		with get_connection() as conn:
+			conditions = []
+			params = []
+			
+			# 关键词同时匹配标题与正文
 			if keyword:
-				sql = "SELECT * FROM collected_data WHERE keyword LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?"
-				rows = conn.execute(sql, (f"%{keyword}%", per_page, offset)).fetchall()
-				count_sql = "SELECT COUNT(*) as total FROM collected_data WHERE keyword LIKE ?"
-				total = conn.execute(count_sql, (f"%{keyword}%",)).fetchone()["total"]
-			else:
-				sql = "SELECT * FROM collected_data ORDER BY id DESC LIMIT ? OFFSET ?"
-				rows = conn.execute(sql, (per_page, offset)).fetchall()
-				count_sql = "SELECT COUNT(*) as total FROM collected_data"
-				total = conn.execute(count_sql).fetchone()["total"]
+				conditions.append("(title LIKE ? OR content LIKE ?)")
+				params.extend([f"%{keyword}%", f"%{keyword}%"])
+			
+			# 按选中的瞭源过滤
+			if source_ids:
+				placeholders = ",".join("?" for _ in source_ids)
+				conditions.append(f"source_id IN ({placeholders})")
+				params.extend(source_ids)
+			
+			where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+			
+			sql = f"SELECT * FROM collected_data {where_clause} ORDER BY id DESC LIMIT ? OFFSET ?"
+			rows = conn.execute(sql, (*params, per_page, offset)).fetchall()
+			
+			count_sql = f"SELECT COUNT(*) as total FROM collected_data {where_clause}"
+			total = conn.execute(count_sql, params).fetchone()["total"]
 			
 			return {"items": rows, "total": total}
 	
@@ -288,9 +299,9 @@ class CollectedDataRepository:
 	@staticmethod
 	def _parse_weibo_search(source, response_text, keyword):
 		"""解析微博搜索结果页"""
-		# 微博搜索需要登录态，若被重定向到登录/访客页则直接返回空
+		# 微博搜索需要登录态，若被重定向到登录/访客页则明确报错
 		if "passport.weibo.com" in response_text or "Sina Visitor System" in response_text:
-			return []
+			raise Exception("微博搜索需要登录态，当前请求被重定向到访客验证页面，无法匿名采集")
 		
 		soup = BeautifulSoup(response_text, "html.parser")
 		results = []
