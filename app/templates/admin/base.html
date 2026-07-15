@@ -398,6 +398,7 @@
     var layer = layui.layer;
     var $ = layui.jquery;
     
+    // 子菜单链接点击跳转
     $('.layui-nav-child a').on('click', function() {
       var url = $(this).data('url');
       var title = $(this).text();
@@ -406,15 +407,33 @@
       }
     });
 
+    // 顶级菜单链接点击跳转（无数智大屏等无子菜单的项）
+    $('.layui-nav-item > a[data-url]').on('click', function(e) {
+      var url = $(this).data('url');
+      if (url) {
+        e.preventDefault();
+        window.location.href = url;
+      }
+    });
+
     // 根据当前 URL 自动展开并高亮对应菜单
     function setActiveMenu() {
       var path = window.location.pathname;
       var matched = false;
+      // 检查子菜单
       $('.layui-nav-child a').each(function() {
         var url = $(this).data('url');
         if (url && path.indexOf(url) === 0) {
           $(this).parent('dd').addClass('layui-this');
           $(this).closest('.layui-nav-item').addClass('layui-nav-itemed');
+          matched = true;
+        }
+      });
+      // 检查顶级菜单
+      $('.layui-nav-item > a[data-url]').each(function() {
+        var url = $(this).data('url');
+        if (url && path.indexOf(url) === 0) {
+          $(this).parent('.layui-nav-item').addClass('layui-this');
           matched = true;
         }
       });
@@ -512,6 +531,10 @@
             <dd><a href="javascript:void(0);" data-url="/admin/ai">模型引擎</a></dd>
             <dd><a href="javascript:void(0);" data-url="/admin/digital">数字员工</a></dd>
           </dl>
+        </li>
+
+        <li class="layui-nav-item">
+          <a href="javascript:void(0);" data-url="/admin/dashboard"><i class="layui-icon layui-icon-screen-full"></i>数智大屏</a>
         </li>
         
       </ul>
