@@ -475,13 +475,22 @@ def init_db():
 				2
 			),
 			(
+				"百度百科",
+				"百度百科词条采集源",
+				"https://baike.baidu.com",
+				"/item/{keyword}",
+				baidu_headers,
+				1,
+				3
+			),
+			(
 				"微博热搜",
 				"微博实时热搜榜采集源",
 				"https://s.weibo.com",
 				"/top/summary",
 				baidu_headers,
 				1,
-				3
+				4
 			),
 			(
 				"微博搜索",
@@ -490,7 +499,7 @@ def init_db():
 				"/weibo?q={keyword}&page={page}",
 				baidu_headers,
 				1,
-				4
+				5
 			)
 		]
 		

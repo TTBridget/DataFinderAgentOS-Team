@@ -366,8 +366,8 @@
                 </div>
                 
                 <div class="ai-actions">
-                    <button class="btn-cyber" onclick="openChat({{ model['id'] }}, {{ json_encode(model['name']) }})"><i class="layui-icon layui-icon-dialogue"></i> 对话测试</button>
-                    <button class="btn-ghost" onclick='openEditModal({{ json_encode({k: v for k, v in dict(model).items() if k != "api_key"}) }})'><i class="layui-icon layui-icon-edit"></i> 设置</button>
+                    <button class="btn-cyber" onclick='openChat({{ model['id'] }}, {% raw json_encode(model['name']) %})'><i class="layui-icon layui-icon-dialogue"></i> 对话测试</button>
+                    <button class="btn-ghost" onclick='openEditModal({% raw json_encode({k: v for k, v in dict(model).items() if k != "api_key"}) %})'><i class="layui-icon layui-icon-edit"></i> 设置</button>
                     {% if model['is_default'] == 0 %}
                     <button class="btn-ghost" onclick="setDefault({{ model['id'] }})"><i class="layui-icon layui-icon-rate"></i> 设为默认</button>
                     {% end %}
@@ -538,7 +538,7 @@ layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
         theme: '#2563eb',
         jump: function(obj, first){
             if(!first){
-                window.location.href = '?page=' + obj.curr + '&search=' + encodeURIComponent({{ json_encode(search) }}) + '&model_type=' + encodeURIComponent({{ json_encode(model_type) }});
+                window.location.href = '?page=' + obj.curr + '&search=' + encodeURIComponent({% raw json_encode(search) %}) + '&model_type=' + encodeURIComponent({% raw json_encode(model_type) %});
             }
         }
     });
@@ -554,15 +554,15 @@ layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
 
 function searchModels(){
     var search = layui.jquery('#searchInput').val();
-    window.location.href = '?search=' + encodeURIComponent(search) + '&model_type=' + encodeURIComponent({{ json_encode(model_type) }});
+    window.location.href = '?search=' + encodeURIComponent(search) + '&model_type=' + encodeURIComponent({% raw json_encode(model_type) %});
 }
 
 function clearSearch(){
-    window.location.href = '?model_type=' + encodeURIComponent({{ json_encode(model_type) }});
+    window.location.href = '?model_type=' + encodeURIComponent({% raw json_encode(model_type) %});
 }
 
 function filterType(type){
-    window.location.href = '?search=' + encodeURIComponent({{ json_encode(search) }}) + '&model_type=' + encodeURIComponent(type);
+    window.location.href = '?search=' + encodeURIComponent({% raw json_encode(search) %}) + '&model_type=' + encodeURIComponent(type);
 }
 
 function openModelModal(){

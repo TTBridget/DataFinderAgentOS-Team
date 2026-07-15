@@ -34,6 +34,8 @@ LLM_HOST_ALLOWLIST = {
     "api.gptapi.us",
     "api.mistral.ai",
     "api.openai.azure.com",
+    "aigc-api.aitoolcore.com",
+    "apihub.agnes-ai.com",
 }
 
 

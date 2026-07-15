@@ -76,6 +76,10 @@ class CollectedDataRepository:
 		if "热搜" in source["name"] and "微博" in source["name"]:
 			return base_url + path_template
 		
+		# 百度百科不需要分页
+		if "百科" in source["name"]:
+			return base_url + path_template.format(keyword=urllib.parse.quote(keyword))
+		
 		# 计算分页步长（通用每页10条）
 		page_num = page * 10
 		
@@ -263,6 +267,77 @@ class CollectedDataRepository:
 		return results
 	
 	@staticmethod
+	def _parse_baike(source, response_text, keyword):
+		"""解析百度百科词条页面"""
+		soup = BeautifulSoup(response_text, "html.parser")
+		results = []
+		
+		# 获取词条标题
+		title_tag = (
+			soup.find("dd", class_="lemmaWgt-lemmaTitle-title")
+			or soup.find("h1")
+			or soup.find("span", class_="lemmaTitle")
+		)
+		title = ""
+		if title_tag:
+			title = title_tag.get_text(strip=True)
+			# 去除"编辑""锁定"等干扰文字
+			for noise in title_tag.find_all(class_=re.compile(r"edit|lock|voice|index")):
+				title = title.replace(noise.get_text(strip=True), "")
+			title = title.strip()
+		
+		if not title:
+			title = keyword
+		
+		# 获取词条摘要
+		summary_tag = (
+			soup.find("div", class_="lemma-summary")
+			or soup.find("div", class_="lemmaSummary")
+			or soup.find("div", class_="J-lemma-summary")
+		)
+		summary = ""
+		if summary_tag:
+			# 移除引用标记
+			for sup in summary_tag.find_all("sup", class_="sup--normal"):
+				sup.decompose()
+			summary = summary_tag.get_text(strip=True)
+		
+		# 获取基本信息
+		info_box = soup.find("div", class_="basic-info")
+		info_text = ""
+		if info_box:
+			items = info_box.find_all("dt")
+			info_parts = []
+			for dt in items:
+				dd = dt.find_next_sibling("dd")
+				if dd:
+					info_parts.append(f"{dt.get_text(strip=True)}: {dd.get_text(strip=True)}")
+			info_text = "；".join(info_parts)
+		
+		# 组合内容
+		content_parts = []
+		if summary:
+			content_parts.append(summary)
+		if info_text:
+			content_parts.append(info_text)
+		content = "。".join(content_parts) if content_parts else ""
+		
+		# 构建 URL
+		link_url = f"https://baike.baidu.com/item/{urllib.parse.quote(keyword)}"
+		
+		if title:
+			data_id = CollectedDataRepository.create(
+				source["id"], title, link_url, content, "", "百度百科", keyword
+			)
+			results.append({
+				"id": data_id, "title": title, "url": link_url,
+				"content": content, "publish_time": "",
+				"source_name": "百度百科", "keyword": keyword
+			})
+		
+		return results
+	
+	@staticmethod
 	def _parse_weibo_search(source, response_text, keyword):
 		"""解析微博搜索结果页"""
 		if "passport.weibo.com" in response_text or "Sina Visitor System" in response_text:
@@ -319,6 +394,8 @@ class CollectedDataRepository:
 				results = CollectedDataRepository._parse_baidu_news(source, response.text, keyword)
 			elif name == "百度搜索":
 				results = CollectedDataRepository._parse_baidu_search(source, response.text, keyword)
+			elif name == "百度百科":
+				results = CollectedDataRepository._parse_baike(source, response.text, keyword)
 			elif name == "微博热搜":
 				results = CollectedDataRepository._parse_weibo_hot(source, response.text, keyword)
 			elif name == "微博搜索":
