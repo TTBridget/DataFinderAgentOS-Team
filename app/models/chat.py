@@ -8,7 +8,52 @@ from app.models.db import get_connection
 
 class ChatSessionRepository:
 	"""对话会话仓储"""
-	
+
+	@staticmethod
+	def get_all_sessions(page=1, page_size=20, search_keyword=None, user_id=None):
+		"""后台管理：获取所有会话列表，支持搜索"""
+		offset = (page - 1) * page_size
+		with get_connection() as conn:
+			query = """
+				SELECT cs.*, u.username as username
+				FROM chat_sessions cs
+				LEFT JOIN users u ON cs.user_id = u.id
+			"""
+			count_query = "SELECT COUNT(*) as total FROM chat_sessions cs"
+			params = []
+			count_params = []
+
+			conditions = []
+			if user_id:
+				conditions.append("cs.user_id = ?")
+				params.append(user_id)
+				count_params.append(user_id)
+
+			if search_keyword:
+				conditions.append("(cs.title LIKE ? OR u.username LIKE ?)")
+				params.extend([f"%{search_keyword}%", f"%{search_keyword}%"])
+				count_params.extend([f"%{search_keyword}%", f"%{search_keyword}%"])
+
+			if conditions:
+				where = " WHERE " + " AND ".join(conditions)
+				query += where
+				count_query += where
+
+			query += " ORDER BY cs.updated_at DESC LIMIT ? OFFSET ?"
+			params.extend([page_size, offset])
+
+			rows = conn.execute(query, params).fetchall()
+			total = conn.execute(count_query, count_params).fetchone()["total"]
+			return {"items": rows, "total": total, "page": page, "page_size": page_size}
+
+	@staticmethod
+	def admin_delete(session_id):
+		"""后台管理：删除会话及其消息（不校验用户归属）"""
+		with get_connection() as conn:
+			conn.execute("DELETE FROM chat_messages WHERE session_id = ?", (session_id,))
+			conn.execute("DELETE FROM chat_sessions WHERE id = ?", (session_id,))
+			return True
+
 	@staticmethod
 	def create(user_id, title=None, model_id=None, employee_id=None):
 		"""创建新会话"""
@@ -111,7 +156,57 @@ class ChatSessionRepository:
 
 class ChatMessageRepository:
 	"""对话消息仓储"""
-	
+
+	@staticmethod
+	def get_all_messages(page=1, page_size=20, search_keyword=None, session_id=None, user_id=None):
+		"""后台管理：获取所有对话消息，支持搜索"""
+		offset = (page - 1) * page_size
+		with get_connection() as conn:
+			query = """
+				SELECT cm.*, cs.title as session_title, u.username as username
+				FROM chat_messages cm
+				LEFT JOIN chat_sessions cs ON cm.session_id = cs.id
+				LEFT JOIN users u ON cs.user_id = u.id
+			"""
+			count_query = "SELECT COUNT(*) as total FROM chat_messages cm"
+			params = []
+			count_params = []
+
+			conditions = []
+			if session_id:
+				conditions.append("cm.session_id = ?")
+				params.append(session_id)
+				count_params.append(session_id)
+
+			if user_id:
+				conditions.append("cs.user_id = ?")
+				params.append(user_id)
+				count_params.append(user_id)
+
+			if search_keyword:
+				conditions.append("(cm.content LIKE ? OR cs.title LIKE ? OR u.username LIKE ?)")
+				params.extend([f"%{search_keyword}%", f"%{search_keyword}%", f"%{search_keyword}%"])
+				count_params.extend([f"%{search_keyword}%", f"%{search_keyword}%", f"%{search_keyword}%"])
+
+			if conditions:
+				where = " WHERE " + " AND ".join(conditions)
+				query += where
+				count_query += where
+
+			query += " ORDER BY cm.created_at DESC, cm.id DESC LIMIT ? OFFSET ?"
+			params.extend([page_size, offset])
+
+			rows = conn.execute(query, params).fetchall()
+			total = conn.execute(count_query, count_params).fetchone()["total"]
+			return {"items": rows, "total": total, "page": page, "page_size": page_size}
+
+	@staticmethod
+	def admin_delete(message_id):
+		"""后台管理：删除单条消息"""
+		with get_connection() as conn:
+			conn.execute("DELETE FROM chat_messages WHERE id = ?", (message_id,))
+			return True
+
 	@staticmethod
 	def create(session_id, role, content, model_id=None, employee_id=None, response_time=None, token_count=None):
 		"""创建消息"""

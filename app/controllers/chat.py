@@ -15,6 +15,7 @@ from app.models.chat import ChatSessionRepository, ChatMessageRepository
 from app.models.ai_model import AiModelRepository
 from app.models.digital_employee import DigitalEmployeeRepository, read_employee_nd_contents
 from app.models.user import UserRepository
+from app.models.skill import SkillRepository, SkillEngine
 from app.services.intent_engine import recognize_intent, execute_database_query, generate_chart_config
 from app.utils.security import safe_int, validate_llm_base_url, validate_employee_api_url
 
@@ -910,6 +911,11 @@ class ChatHandler(BaseHandler):
 			nd_contents = read_employee_nd_contents(mentioned_employee["id"])
 			if nd_contents:
 				system_content_parts.append(nd_contents)
+			# 若启用技能增强，将已启用技能注入系统提示词
+			if mentioned_employee.get("use_skills") == 1:
+				skills = SkillRepository.get_enabled()
+				enhanced = SkillEngine.apply_skills("\n\n".join(system_content_parts), skills, message)
+				system_content_parts = [enhanced]
 		elif model["system_prompt"]:
 			system_content_parts.append(model["system_prompt"])
 		

@@ -6,8 +6,18 @@ from tornado.httpserver import HTTPServer
 from app.controllers.auth import LoginHandler, LogoutHandler, RegisterHandler
 from app.controllers.home import IndexHandler
 from app.controllers.chat import ChatHandler, ChatSessionHandler, ChatMessageHandler, ChatResendHandler, ChatExportHandler, ModelListHandler, EmployeeListHandler
+<<<<<<< HEAD
+from app.controllers.admin import (
+    AdminLoginHandler, AdminLogoutHandler, AdminIndexHandler, UserManageHandler,
+    RoleManageHandler, FunctionManageHandler, MenuManageHandler, DataSourceManageHandler,
+    WatchManageHandler, AiModelManageHandler, AiModelChatHandler, DataWarehouseManageHandler,
+    DigitalEmployeeManageHandler, ApiInterfaceManageHandler, SkillManageHandler,
+    ChatSessionManageHandler, ChatMessageManageHandler
+)
+=======
 from app.controllers.admin import AdminLoginHandler, AdminLogoutHandler, AdminIndexHandler, UserManageHandler, RoleManageHandler, FunctionManageHandler, MenuManageHandler, DataSourceManageHandler, WatchManageHandler, AiModelManageHandler, AiModelChatHandler, DataWarehouseManageHandler, DigitalEmployeeManageHandler
 from app.controllers.public_sentiment import PublicSentimentHandler, PublicSentimentStatsHandler, PublicSentimentAlertsHandler, PublicSentimentAlertDetailHandler, PublicSentimentAlertActionHandler, PublicSentimentTrendHandler, PublicSentimentHotTopicsHandler, PublicSentimentRiskLevelHandler, PublicSentimentSensitiveWordsHandler, PublicSentimentScanHandler
+>>>>>>> main
 from app.models.db import init_db
 
 
@@ -58,6 +68,10 @@ def webapp():
 		(r"/admin/watch", WatchManageHandler),
 		(r"/admin/data_warehouse", DataWarehouseManageHandler),
 		(r"/admin/digital", DigitalEmployeeManageHandler),
+		(r"/admin/api_interface", ApiInterfaceManageHandler),
+		(r"/admin/skill", SkillManageHandler),
+		(r"/admin/chat_session", ChatSessionManageHandler),
+		(r"/admin/chat_message", ChatMessageManageHandler),
 		(r"/admin/ai", AiModelManageHandler),
 		(r"/admin/ai/chat", AiModelChatHandler),
 		

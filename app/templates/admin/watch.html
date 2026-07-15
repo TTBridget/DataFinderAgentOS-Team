@@ -189,10 +189,13 @@
             <form class="layui-form">
                 <div class="layui-form-item" style="margin-bottom: 0;">
                     <div class="layui-input-inline" style="width: 400px; margin-right: 16px;">
-                        <input type="text" name="keyword" id="keyword" placeholder="请输入要采集的关键词..." class="layui-input dark-input">
+                        <input type="text" name="keyword" id="keyword" placeholder="请输入关键词筛选或采集..." value="{{ keyword }}" class="layui-input dark-input">
                     </div>
                     <button class="btn-cyber" type="button" onclick="startCollect()">
                         <i class="layui-icon layui-icon-download-circle"></i> 开始智能采集
+                    </button>
+                    <button class="btn-ghost" type="button" onclick="applyFilter()" style="margin-left: 10px;">
+                        <i class="layui-icon layui-icon-search"></i> 筛选结果
                     </button>
                     <button class="btn-ghost-danger" type="button" onclick="clearData()" style="margin-left: 10px;">
                         <i class="layui-icon layui-icon-delete"></i> 清空历史数据
@@ -211,7 +214,7 @@
             <form class="layui-form">
                 <div id="sourceList" style="display: flex; gap: 20px; flex-wrap: wrap;">
                     {% for source in data_sources %}
-                    <input type="checkbox" name="source" value="{{ source['id'] }}" lay-skin="primary" title="{{ source['name'] }}" checked>
+                    <input type="checkbox" name="source" value="{{ source['id'] }}" lay-skin="primary" title="{{ source['name'] }}" lay-filter="sourceFilter" {% if source['id'] in selected_source_ids %}checked{% end %}>
                     {% end %}
                     {% if not data_sources %}
                     <span style="color: #64748b;">暂无可用瞭源，请先前往瞭源管理配置。</span>
@@ -303,9 +306,14 @@ layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
 		theme: '#2563eb',
 		jump: function(obj, first){
 			if(!first){
-				window.location.href = '?page=' + obj.curr;
+				window.location.href = buildFilterUrl(obj.curr);
 			}
 		}
+	});
+	
+	// 瞭源勾选变化时自动筛选
+	form.on('checkbox(sourceFilter)', function(data){
+		applyFilter();
 	});
 	
 	// 全选/取消全选
@@ -363,6 +371,27 @@ function getSelectedSourceIds() {
 	return ids;
 }
 
+function buildFilterUrl(page) {
+	var $ = layui.jquery;
+	var keyword = $('#keyword').val();
+	var sourceIds = getSelectedSourceIds();
+	var params = [];
+	if (page && page > 1) {
+		params.push('page=' + page);
+	}
+	if (keyword) {
+		params.push('keyword=' + encodeURIComponent(keyword));
+	}
+	if (sourceIds.length > 0) {
+		params.push('source_ids=' + sourceIds.join(','));
+	}
+	return '?' + params.join('&');
+}
+
+function applyFilter() {
+	window.location.href = buildFilterUrl(1);
+}
+
 function startCollect() {
 	var $ = layui.jquery;
 	var keyword = $('#keyword').val();
@@ -392,7 +421,7 @@ function startCollect() {
 		layui.layer.close(loading);
 		if(res.code === 0){
 			layui.layer.msg(res.msg, {icon: 1});
-			setTimeout(function(){ location.reload(); }, 1000);
+			setTimeout(function(){ window.location.href = buildFilterUrl(1); }, 1000);
 		} else {
 			layui.layer.msg(res.msg, {icon: 2});
 		}

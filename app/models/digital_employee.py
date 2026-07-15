@@ -117,7 +117,7 @@ class DigitalEmployeeRepository:
         offset = (page - 1) * per_page
         
         with get_connection() as conn:
-            query = "SELECT de.*, am.name as model_name FROM digital_employees de LEFT JOIN ai_models am ON de.model_id = am.id"
+            query = "SELECT de.*, am.name as model_name, ai.name as interface_name FROM digital_employees de LEFT JOIN ai_models am ON de.model_id = am.id LEFT JOIN api_interfaces ai ON de.api_interface_id = ai.id"
             count_query = "SELECT COUNT(*) as total FROM digital_employees de"
             params = []
             count_params = []
@@ -142,14 +142,14 @@ class DigitalEmployeeRepository:
         """根据ID获取数字员工"""
         with get_connection() as conn:
             row = conn.execute(
-                "SELECT de.*, am.name as model_name FROM digital_employees de LEFT JOIN ai_models am ON de.model_id = am.id WHERE de.id = ?",
+                "SELECT de.*, am.name as model_name, ai.name as interface_name FROM digital_employees de LEFT JOIN ai_models am ON de.model_id = am.id LEFT JOIN api_interfaces ai ON de.api_interface_id = ai.id WHERE de.id = ?",
                 (emp_id,)
             ).fetchone()
             return row
 
     @staticmethod
     def create(name, description, emp_type, model_id=None, system_prompt=None,
-               use_skills=0, use_crawl4ai=0, api_url=None, api_method='GET',
+               use_skills=0, use_crawl4ai=0, api_interface_id=None, api_url=None, api_method='GET',
                api_headers=None, api_params=None, card_type=None, is_enabled=1, sort_order=0):
         """创建数字员工"""
         try:
@@ -157,11 +157,11 @@ class DigitalEmployeeRepository:
                 cursor = conn.execute(
                     """
                     INSERT INTO digital_employees 
-                    (name, description, type, model_id, system_prompt, use_skills, use_crawl4ai, 
+                    (name, description, type, model_id, system_prompt, use_skills, use_crawl4ai, api_interface_id,
                      api_url, api_method, api_headers, api_params, card_type, is_enabled, sort_order)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (name, description, emp_type, model_id, system_prompt, use_skills, use_crawl4ai,
+                    (name, description, emp_type, model_id, system_prompt, use_skills, use_crawl4ai, api_interface_id,
                      api_url, api_method, api_headers, api_params, card_type, is_enabled, sort_order)
                 )
                 return cursor.lastrowid
@@ -170,8 +170,8 @@ class DigitalEmployeeRepository:
 
     @staticmethod
     def update(emp_id, name=None, description=None, emp_type=None, model_id=None,
-               system_prompt=None, use_skills=None, use_crawl4ai=None, api_url=None,
-               api_method=None, api_headers=None, api_params=None, card_type=None,
+               system_prompt=None, use_skills=None, use_crawl4ai=None, api_interface_id=None,
+               api_url=None, api_method=None, api_headers=None, api_params=None, card_type=None,
                is_enabled=None, sort_order=None):
         """更新数字员工"""
         try:
@@ -200,6 +200,9 @@ class DigitalEmployeeRepository:
                 if use_crawl4ai is not None:
                     updates.append("use_crawl4ai = ?")
                     params.append(use_crawl4ai)
+                if api_interface_id is not None:
+                    updates.append("api_interface_id = ?")
+                    params.append(api_interface_id)
                 if api_url is not None:
                     updates.append("api_url = ?")
                     params.append(api_url)

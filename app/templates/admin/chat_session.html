@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block body %}
+<style>
+.biz-container {
+    padding: 24px;
+    min-height: calc(100vh - 64px);
+    background: #0f172a;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(22, 93, 255, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(14, 59, 161, 0.15) 0px, transparent 50%);
+    color: #e2e8f0;
+}
+
+.biz-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.biz-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    font-size: 16px;
+    font-weight: 600;
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.biz-card-body {
+    padding: 20px;
+}
+
+.btn-cyber {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 20px;
+    height: 38px;
+    line-height: 38px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-cyber:hover {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    color: white;
+}
+
+.btn-ghost {
+    background: rgba(51, 65, 85, 0.5);
+    color: #cbd5e1;
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    border-radius: 6px;
+    padding: 0 20px;
+    height: 38px;
+    line-height: 36px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-ghost:hover {
+    background: rgba(71, 85, 105, 0.8);
+    color: white;
+}
+
+.dark-input {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+    border-radius: 6px !important;
+}
+.dark-input:focus {
+    border-color: #3b82f6 !important;
+}
+
+.layui-table {
+    background-color: transparent !important;
+    color: #cbd5e1 !important;
+}
+.layui-table thead tr {
+    background-color: rgba(15, 23, 42, 0.6) !important;
+}
+.layui-table th {
+    color: #f8fafc;
+    font-weight: 600;
+    border-color: rgba(51, 65, 85, 0.5) !important;
+}
+.layui-table td {
+    border-color: rgba(51, 65, 85, 0.5) !important;
+}
+.layui-table tbody tr:hover, .layui-table-hover {
+    background-color: rgba(30, 41, 59, 0.8) !important;
+}
+
+.layui-laypage a, .layui-laypage span {
+    background-color: rgba(30, 41, 59, 0.6) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+}
+.layui-laypage .layui-laypage-curr .layui-laypage-em {
+    background-color: #2563eb !important;
+}
+
+.layui-layer-page .layui-layer-content {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+.layui-layer-title {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    border-bottom: 1px solid #334155 !important;
+}
+</style>
+
+<div class="biz-container">
+    <div class="biz-card">
+        <div class="biz-card-header">
+            <i class="layui-icon layui-icon-dialogue" style="color: #3b82f6;"></i> 会话管理
+        </div>
+        <div class="biz-card-body">
+            <div class="layui-form-item" style="margin-bottom: 24px;">
+                <div class="layui-inline" style="margin-right: 16px;">
+                    <input type="text" id="searchInput" placeholder="搜索会话标题或用户名..." class="layui-input dark-input" style="width: 280px;" value="{{ search }}">
+                </div>
+                <div class="layui-inline" style="margin-right: 16px;">
+                    <input type="number" id="userIdInput" placeholder="用户 ID" class="layui-input dark-input" style="width: 140px;" value="{{ user_id }}">
+                </div>
+                <button class="btn-ghost" onclick="searchSessions()"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+                <a href="/admin/chat_session" class="btn-ghost" style="margin-left: 8px;">重置</a>
+            </div>
+
+            <table class="layui-table" lay-skin="line">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th>会话标题</th>
+                        <th>用户</th>
+                        <th>模型 ID</th>
+                        <th>数字员工 ID</th>
+                        <th>置顶</th>
+                        <th>更新时间</th>
+                        <th style="width: 220px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in sessions %}
+                    <tr>
+                        <td>{{ item['id'] }}</td>
+                        <td style="font-weight: 600; color: #f8fafc;">{{ item['title'] or '未命名' }}</td>
+                        <td>{{ item['username'] or item['user_id'] }}</td>
+                        <td>{{ item['model_id'] or '-' }}</td>
+                        <td>{{ item['employee_id'] or '-' }}</td>
+                        <td>
+                            {% if item['is_pinned'] == 1 %}
+                            <span class="layui-badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);">置顶</span>
+                            {% else %}
+                            <span style="color: #64748b;">-</span>
+                            {% end %}
+                        </td>
+                        <td>{{ item['updated_at'] }}</td>
+                        <td>
+                            <a href="/admin/chat_message?session_id={{ item['id'] }}" class="layui-btn layui-btn-xs" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);">查看对话</a>
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="viewSession({{ item['id'] }})">详情</button>
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="deleteSession({{ item['id'] }})">删除</button>
+                        </td>
+                    </tr>
+                    {% end %}
+                    {% if not sessions %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">暂无会话记录</td>
+                    </tr>
+                    {% end %}
+                </tbody>
+            </table>
+
+            <div id="pagination" style="margin-top: 20px; text-align: right;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
+    var layer = layui.layer;
+    var laypage = layui.laypage;
+    var $ = layui.jquery;
+
+    laypage.render({
+        elem: 'pagination',
+        count: {{ total }},
+        limit: 20,
+        curr: {{ page }},
+        theme: '#2563eb',
+        jump: function(obj, first){
+            if(!first){
+                var search = $('#searchInput').val();
+                var userId = $('#userIdInput').val();
+                window.location.href = '?page=' + obj.curr + '&search=' + encodeURIComponent(search) + '&user_id=' + encodeURIComponent(userId);
+            }
+        }
+    });
+
+    window.searchSessions = function(){
+        var search = $('#searchInput').val();
+        var userId = $('#userIdInput').val();
+        window.location.href = '?page=1&search=' + encodeURIComponent(search) + '&user_id=' + encodeURIComponent(userId);
+    };
+
+    window.viewSession = function(id){
+        $.post('/admin/chat_session', {
+            action: 'get_detail',
+            id: id,
+            _xsrf: getCookie('_xsrf')
+        }, function(res){
+            if(res.code == 0){
+                var s = res.data;
+                var html = '<div class="layui-form" style="padding: 20px; color: #e2e8f0;">';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">会话 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + s.id + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">标题</label><div class="layui-input-block"><span class="layui-form-mid">' + (s.title || '未命名') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">用户 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + s.user_id + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">模型 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + (s.model_id || '-') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">数字员工 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + (s.employee_id || '-') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">置顶</label><div class="layui-input-block"><span class="layui-form-mid">' + (s.is_pinned == 1 ? '是' : '否') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">创建时间</label><div class="layui-input-block"><span class="layui-form-mid">' + s.created_at + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">更新时间</label><div class="layui-input-block"><span class="layui-form-mid">' + s.updated_at + '</span></div></div>';
+                html += '</div>';
+                layer.open({
+                    type: 1,
+                    title: '会话详情',
+                    content: html,
+                    area: ['500px', '480px'],
+                    btn: ['关闭']
+                });
+            } else {
+                layer.msg(res.msg || '获取数据失败', {icon: 2});
+            }
+        });
+    };
+
+    window.deleteSession = function(id){
+        layer.confirm('删除会话将同时删除其所有对话消息，确定继续吗？', {icon: 3}, function(index){
+            $.post('/admin/chat_session', {
+                action: 'delete',
+                id: id,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code == 0){
+                    layer.msg(res.msg, {icon: 1});
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    };
+});
+</script>
+{% end %}
