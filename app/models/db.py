@@ -402,6 +402,12 @@ def init_db():
 			conn.execute("ALTER TABLE digital_employees ADD COLUMN card_type TEXT")
 		except sqlite3.OperationalError:
 			pass
+
+		# 为已存在的数字员工表添加关联接口字段
+		try:
+			conn.execute("ALTER TABLE digital_employees ADD COLUMN api_interface_id INTEGER REFERENCES api_interfaces(id)")
+		except sqlite3.OperationalError:
+			pass
 		
 		# 检查是否存在默认百度新闻数据源
 		source_exists = conn.execute(
@@ -513,6 +519,64 @@ def init_db():
 			)
 			"""
 		)
+		
+		# 创建接口管理表
+		conn.execute(
+			"""
+			CREATE TABLE IF NOT EXISTS api_interfaces(
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				name TEXT NOT NULL UNIQUE,
+				description TEXT,
+				api_url TEXT NOT NULL,
+				api_method TEXT DEFAULT 'GET',
+				api_headers TEXT, -- JSON
+				api_params TEXT, -- JSON
+				api_body TEXT, -- JSON
+				response_type TEXT DEFAULT 'json', -- json / text
+				card_type TEXT, -- weather / table / json / html / text
+				is_enabled INTEGER DEFAULT 1,
+				sort_order INTEGER DEFAULT 0,
+				created_at TEXT NOT NULL DEFAULT(datetime('now','localtime')),
+				updated_at TEXT NOT NULL DEFAULT(datetime('now','localtime'))
+			)
+			"""
+		)
+		
+		# 创建技能管理表
+		conn.execute(
+			"""
+			CREATE TABLE IF NOT EXISTS skills(
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				name TEXT NOT NULL UNIQUE,
+				code TEXT NOT NULL UNIQUE,
+				description TEXT,
+				config TEXT, -- JSON
+				is_enabled INTEGER DEFAULT 1,
+				sort_order INTEGER DEFAULT 0,
+				created_at TEXT NOT NULL DEFAULT(datetime('now','localtime')),
+				updated_at TEXT NOT NULL DEFAULT(datetime('now','localtime'))
+			)
+			"""
+		)
+		
+		# 初始化默认技能：当前时间感知
+		_skill_exists = conn.execute("SELECT 1 FROM skills WHERE code = ?", ("current_time",)).fetchone()
+		if not _skill_exists:
+			conn.execute(
+				"""
+				INSERT INTO skills (name, code, description, config, is_enabled, sort_order)
+				VALUES (?, ?, ?, ?, ?, ?)
+				""",
+				(
+					"当前时间感知",
+					"current_time",
+					"自动在系统提示词中注入当前日期和时间，增强模型对时间的感知能力",
+					'{"format": "%Y-%m-%d %H:%M:%S"}',
+					1,
+					1
+				)
+			)
+			print("默认技能[当前时间感知]创建成功！")
 		
 		# 检查是否存在默认采集专员数字员工
 		collector_exists = conn.execute(

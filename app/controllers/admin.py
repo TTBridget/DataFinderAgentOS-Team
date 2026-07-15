@@ -21,6 +21,9 @@ from app.models.digital_employee import (
     list_employee_nd_files,
 )
 from app.models.ai_model import AiModelRepository
+from app.models.api_interface import ApiInterfaceRepository
+from app.models.skill import SkillRepository, SkillEngine
+from app.models.chat import ChatSessionRepository, ChatMessageRepository
 import tornado.gen
 import urllib.request
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
@@ -1013,6 +1016,7 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 		
 		result = DigitalEmployeeRepository.get_all(page, 20, search)
 		models = AiModelRepository.get_all(1, 1000, "")
+		interfaces = ApiInterfaceRepository.get_enabled()
 		
 		self.render("admin/digital_employee.html", 
 			title="数字员工",
@@ -1021,6 +1025,7 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 			total=result["total"],
 			search=search,
 			models=models["items"],
+			interfaces=interfaces,
 			username=self.current_user
 		)
 	
@@ -1038,6 +1043,7 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 			use_skills = safe_int(self.get_body_argument("use_skills", 0), 0)
 			use_crawl4ai = safe_int(self.get_body_argument("use_crawl4ai", 0), 0)
 			
+			api_interface_id = self.get_body_argument("api_interface_id", None)
 			api_url = self.get_body_argument("api_url", None)
 			api_method = self.get_body_argument("api_method", "GET")
 			api_headers = self.get_body_argument("api_headers", None)
@@ -1059,6 +1065,7 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 				system_prompt=system_prompt,
 				use_skills=use_skills,
 				use_crawl4ai=use_crawl4ai,
+				api_interface_id=safe_int(api_interface_id) if api_interface_id else None,
 				api_url=api_url,
 				api_method=api_method,
 				api_headers=api_headers,
@@ -1086,6 +1093,7 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 			use_skills = self.get_body_argument("use_skills", None)
 			use_crawl4ai = self.get_body_argument("use_crawl4ai", None)
 			
+			api_interface_id = self.get_body_argument("api_interface_id", None)
 			api_url = self.get_body_argument("api_url", None)
 			api_method = self.get_body_argument("api_method", None)
 			api_headers = self.get_body_argument("api_headers", None)
@@ -1108,6 +1116,7 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 				system_prompt=system_prompt,
 				use_skills=safe_int(use_skills) if use_skills is not None else None,
 				use_crawl4ai=safe_int(use_crawl4ai) if use_crawl4ai is not None else None,
+				api_interface_id=safe_int(api_interface_id) if api_interface_id is not None else None,
 				api_url=api_url,
 				api_method=api_method,
 				api_headers=api_headers,
@@ -1169,6 +1178,15 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 				api_headers = employee["api_headers"]
 				api_params = employee["api_params"]
 				
+				# 读取预览时传入的动态参数并合并到已有参数
+				preview_params_str = self.get_body_argument("preview_params", "{}")
+				preview_params = {}
+				if preview_params_str:
+					try:
+						preview_params = json.loads(preview_params_str)
+					except Exception:
+						pass
+				
 				headers = {}
 				if api_headers:
 					try:
@@ -1177,12 +1195,12 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 						pass
 				
 				params = {}
-				data = {}
 				if api_params:
 					try:
 						params = json.loads(api_params)
 					except:
 						pass
+				params.update(preview_params)
 				
 				response = None
 				if api_method.upper() == "GET":
@@ -1204,3 +1222,291 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 					self.write({"code": 1, "msg": f"API请求失败，状态码: {response.status_code if response else '未知'}"})
 			except Exception as e:
 				self.write({"code": 1, "msg": f"预览失败: {str(e)}"})
+
+
+class ApiInterfaceManageHandler(AdminBaseHandler):
+	"""接口管理"""
+
+	@tornado.web.authenticated
+	def get(self):
+		page = safe_int(self.get_argument("page", 1), 1)
+		search = self.get_argument("search", "")
+		result = ApiInterfaceRepository.get_all(page, 20, search)
+
+		self.render("admin/api_interface.html",
+					title="接口管理",
+					interfaces=result["items"],
+					page=page,
+					total=result["total"],
+					search=search,
+					username=self.current_user)
+
+	@tornado.web.authenticated
+	def post(self):
+		action = self.get_body_argument("action", "")
+
+		if action == "add":
+			name = self.get_body_argument("name", "")
+			description = self.get_body_argument("description", "")
+			api_url = self.get_body_argument("api_url", "")
+			api_method = self.get_body_argument("api_method", "GET")
+			api_headers = self.get_body_argument("api_headers", "{}")
+			api_params = self.get_body_argument("api_params", "{}")
+			api_body = self.get_body_argument("api_body", "{}")
+			response_type = self.get_body_argument("response_type", "json")
+			card_type = self.get_body_argument("card_type", "")
+			sort_order = safe_int(self.get_body_argument("sort_order", "0"), 0)
+
+			if not name or not api_url:
+				self.write({"code": 1, "msg": "名称和API URL不能为空"})
+				return
+
+			if not validate_employee_api_url(api_url):
+				self.write({"code": 1, "msg": "API URL 不合法或存在 SSRF 风险"})
+				return
+
+			interface_id = ApiInterfaceRepository.create(
+				name, description, api_url, api_method, api_headers, api_params, api_body,
+				response_type, card_type or None, sort_order=sort_order
+			)
+			if interface_id:
+				self.write({"code": 0, "msg": "创建成功"})
+			else:
+				self.write({"code": 1, "msg": "创建失败，名称可能已存在"})
+
+		elif action == "edit":
+			interface_id = safe_int(self.get_body_argument("id", "0"), 0)
+			name = self.get_body_argument("name", None)
+			description = self.get_body_argument("description", None)
+			api_url = self.get_body_argument("api_url", None)
+			api_method = self.get_body_argument("api_method", None)
+			api_headers = self.get_body_argument("api_headers", None)
+			api_params = self.get_body_argument("api_params", None)
+			api_body = self.get_body_argument("api_body", None)
+			response_type = self.get_body_argument("response_type", None)
+			card_type = self.get_body_argument("card_type", None)
+			sort_order = self.get_body_argument("sort_order", None)
+
+			if api_url and not validate_employee_api_url(api_url):
+				self.write({"code": 1, "msg": "API URL 不合法或存在 SSRF 风险"})
+				return
+
+			success = ApiInterfaceRepository.update(
+				interface_id, name, description, api_url, api_method, api_headers,
+				api_params, api_body, response_type, card_type if card_type else None,
+				sort_order=safe_int(sort_order) if sort_order is not None else None
+			)
+			if success:
+				self.write({"code": 0, "msg": "更新成功"})
+			else:
+				self.write({"code": 1, "msg": "更新失败"})
+
+		elif action == "delete":
+			interface_id = safe_int(self.get_body_argument("id", "0"), 0)
+			ApiInterfaceRepository.delete(interface_id)
+			self.write({"code": 0, "msg": "删除成功"})
+
+		elif action == "toggle":
+			interface_id = safe_int(self.get_body_argument("id", "0"), 0)
+			is_enabled = safe_int(self.get_body_argument("is_enabled", "0"), 0)
+			ApiInterfaceRepository.toggle_enabled(interface_id, is_enabled)
+			self.write({"code": 0, "msg": "状态更新成功"})
+
+		elif action == "get_detail":
+			interface_id = safe_int(self.get_body_argument("id", "0"), 0)
+			interface = ApiInterfaceRepository.get_by_id(interface_id)
+			if interface:
+				self.write({"code": 0, "data": dict(interface)})
+			else:
+				self.write({"code": 1, "msg": "接口不存在"})
+
+		elif action == "preview":
+			interface_id = safe_int(self.get_body_argument("id", "0"), 0)
+			interface = ApiInterfaceRepository.get_by_id(interface_id)
+			if not interface:
+				self.write({"code": 1, "msg": "接口不存在"})
+				return
+
+			api_url = interface["api_url"]
+			if not validate_employee_api_url(api_url):
+				self.write({"code": 1, "msg": "API URL 不合法或存在 SSRF 风险"})
+				return
+
+			try:
+				import requests
+				method = (interface["api_method"] or "GET").upper()
+				headers = json.loads(interface["api_headers"] or "{}")
+				params = json.loads(interface["api_params"] or "{}")
+				body = json.loads(interface["api_body"] or "{}")
+
+				response = None
+				if method == "GET":
+					response = requests.get(api_url, headers=headers, params=params, timeout=15, allow_redirects=False)
+				elif method == "POST":
+					response = requests.post(api_url, headers=headers, json=body, params=params, timeout=15, allow_redirects=False)
+				elif method == "PUT":
+					response = requests.put(api_url, headers=headers, json=body, params=params, timeout=15, allow_redirects=False)
+				elif method == "DELETE":
+					response = requests.delete(api_url, headers=headers, params=params, timeout=15, allow_redirects=False)
+
+				if response and response.status_code == 200:
+					try:
+						data = response.json()
+						self.write({"code": 0, "msg": "预览成功", "data": data})
+					except Exception:
+						self.write({"code": 0, "msg": "预览成功", "data": {"raw": response.text}})
+				else:
+					self.write({"code": 1, "msg": f"API请求失败，状态码: {response.status_code if response else '未知'}"})
+			except Exception as e:
+				self.write({"code": 1, "msg": f"预览失败: {str(e)}"})
+
+
+class SkillManageHandler(AdminBaseHandler):
+	"""技能管理"""
+
+	@tornado.web.authenticated
+	def get(self):
+		page = safe_int(self.get_argument("page", 1), 1)
+		search = self.get_argument("search", "")
+		result = SkillRepository.get_all(page, 20, search)
+
+		self.render("admin/skill.html",
+					title="技能管理",
+					skills=result["items"],
+					page=page,
+					total=result["total"],
+					search=search,
+					username=self.current_user)
+
+	@tornado.web.authenticated
+	def post(self):
+		action = self.get_body_argument("action", "")
+
+		if action == "add":
+			name = self.get_body_argument("name", "")
+			code = self.get_body_argument("code", "")
+			description = self.get_body_argument("description", "")
+			config = self.get_body_argument("config", "{}")
+			sort_order = safe_int(self.get_body_argument("sort_order", "0"), 0)
+
+			if not name or not code:
+				self.write({"code": 1, "msg": "名称和编码不能为空"})
+				return
+
+			skill_id = SkillRepository.create(name, code, description, config, sort_order=sort_order)
+			if skill_id:
+				self.write({"code": 0, "msg": "创建成功"})
+			else:
+				self.write({"code": 1, "msg": "创建失败，名称或编码可能已存在"})
+
+		elif action == "edit":
+			skill_id = safe_int(self.get_body_argument("id", "0"), 0)
+			name = self.get_body_argument("name", None)
+			code = self.get_body_argument("code", None)
+			description = self.get_body_argument("description", None)
+			config = self.get_body_argument("config", None)
+			sort_order = self.get_body_argument("sort_order", None)
+
+			success = SkillRepository.update(
+				skill_id, name, code, description, config,
+				sort_order=safe_int(sort_order) if sort_order is not None else None
+			)
+			if success:
+				self.write({"code": 0, "msg": "更新成功"})
+			else:
+				self.write({"code": 1, "msg": "更新失败"})
+
+		elif action == "delete":
+			skill_id = safe_int(self.get_body_argument("id", "0"), 0)
+			SkillRepository.delete(skill_id)
+			self.write({"code": 0, "msg": "删除成功"})
+
+		elif action == "toggle":
+			skill_id = safe_int(self.get_body_argument("id", "0"), 0)
+			is_enabled = safe_int(self.get_body_argument("is_enabled", "0"), 0)
+			SkillRepository.toggle_enabled(skill_id, is_enabled)
+			self.write({"code": 0, "msg": "状态更新成功"})
+
+		elif action == "get_detail":
+			skill_id = safe_int(self.get_body_argument("id", "0"), 0)
+			skill = SkillRepository.get_by_id(skill_id)
+			if skill:
+				self.write({"code": 0, "data": dict(skill)})
+			else:
+				self.write({"code": 1, "msg": "技能不存在"})
+
+
+class ChatSessionManageHandler(AdminBaseHandler):
+	"""会话管理"""
+
+	@tornado.web.authenticated
+	def get(self):
+		page = safe_int(self.get_argument("page", 1), 1)
+		search = self.get_argument("search", "")
+		user_id = safe_int(self.get_argument("user_id", "0"), 0) or None
+		result = ChatSessionRepository.get_all_sessions(page, 20, search, user_id)
+
+		self.render("admin/chat_session.html",
+					title="会话管理",
+					sessions=result["items"],
+					page=page,
+					total=result["total"],
+					search=search,
+					user_id=user_id or "",
+					username=self.current_user)
+
+	@tornado.web.authenticated
+	def post(self):
+		action = self.get_body_argument("action", "")
+
+		if action == "delete":
+			session_id = safe_int(self.get_body_argument("id", "0"), 0)
+			ChatSessionRepository.admin_delete(session_id)
+			self.write({"code": 0, "msg": "删除成功"})
+
+		elif action == "get_detail":
+			session_id = safe_int(self.get_body_argument("id", "0"), 0)
+			session = ChatSessionRepository.get_by_id(session_id)
+			if session:
+				self.write({"code": 0, "data": dict(session)})
+			else:
+				self.write({"code": 1, "msg": "会话不存在"})
+
+
+class ChatMessageManageHandler(AdminBaseHandler):
+	"""对话管理"""
+
+	@tornado.web.authenticated
+	def get(self):
+		page = safe_int(self.get_argument("page", 1), 1)
+		search = self.get_argument("search", "")
+		session_id = safe_int(self.get_argument("session_id", "0"), 0) or None
+		user_id = safe_int(self.get_argument("user_id", "0"), 0) or None
+		result = ChatMessageRepository.get_all_messages(page, 20, search, session_id, user_id)
+
+		self.render("admin/chat_message.html",
+					title="对话管理",
+					messages=result["items"],
+					page=page,
+					total=result["total"],
+					search=search,
+					session_id=session_id or "",
+					user_id=user_id or "",
+					username=self.current_user)
+
+	@tornado.web.authenticated
+	def post(self):
+		action = self.get_body_argument("action", "")
+
+		if action == "delete":
+			message_id = safe_int(self.get_body_argument("id", "0"), 0)
+			ChatMessageRepository.admin_delete(message_id)
+			self.write({"code": 0, "msg": "删除成功"})
+
+		elif action == "get_detail":
+			message_id = safe_int(self.get_body_argument("id", "0"), 0)
+			message = ChatMessageRepository.get_by_id(message_id)
+			if message:
+				self.write({"code": 0, "data": dict(message)})
+			else:
+				self.write({"code": 1, "msg": "消息不存在"})

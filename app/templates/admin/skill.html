@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block body %}
+<style>
+.biz-container {
+    padding: 24px;
+    min-height: calc(100vh - 64px);
+    background: #0f172a;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(22, 93, 255, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(14, 59, 161, 0.15) 0px, transparent 50%);
+    color: #e2e8f0;
+}
+
+.biz-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.biz-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    font-size: 16px;
+    font-weight: 600;
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.biz-card-body {
+    padding: 20px;
+}
+
+.btn-cyber {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 20px;
+    height: 38px;
+    line-height: 38px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-cyber:hover {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    color: white;
+}
+
+.btn-ghost {
+    background: rgba(51, 65, 85, 0.5);
+    color: #cbd5e1;
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    border-radius: 6px;
+    padding: 0 20px;
+    height: 38px;
+    line-height: 36px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-ghost:hover {
+    background: rgba(71, 85, 105, 0.8);
+    color: white;
+}
+
+.dark-input {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+    border-radius: 6px !important;
+}
+.dark-input:focus {
+    border-color: #3b82f6 !important;
+}
+
+.layui-table {
+    background-color: transparent !important;
+    color: #cbd5e1 !important;
+}
+.layui-table thead tr {
+    background-color: rgba(15, 23, 42, 0.6) !important;
+}
+.layui-table th {
+    color: #f8fafc;
+    font-weight: 600;
+    border-color: rgba(51, 65, 85, 0.5) !important;
+}
+.layui-table td {
+    border-color: rgba(51, 65, 85, 0.5) !important;
+}
+.layui-table tbody tr:hover, .layui-table-hover {
+    background-color: rgba(30, 41, 59, 0.8) !important;
+}
+
+.layui-laypage a, .layui-laypage span {
+    background-color: rgba(30, 41, 59, 0.6) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+}
+.layui-laypage .layui-laypage-curr .layui-laypage-em {
+    background-color: #2563eb !important;
+}
+
+.layui-layer-page .layui-layer-content {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+.layui-layer-title {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    border-bottom: 1px solid #334155 !important;
+}
+.dark-form .layui-form-label {
+    color: #cbd5e1;
+}
+.dark-form .layui-input, .dark-form .layui-textarea, .dark-form .layui-select {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #f8fafc;
+}
+.dark-form .layui-input:focus, .dark-form .layui-textarea:focus {
+    border-color: #3b82f6 !important;
+}
+</style>
+
+<div class="biz-container">
+    <div class="biz-card">
+        <div class="biz-card-header">
+            <i class="layui-icon layui-icon-senior" style="color: #3b82f6;"></i> 技能管理
+        </div>
+        <div class="biz-card-body">
+            <div class="layui-form-item" style="margin-bottom: 24px;">
+                <div class="layui-inline" style="margin-right: 16px;">
+                    <input type="text" id="searchInput" placeholder="请输入技能名称或编码..." class="layui-input dark-input" style="width: 300px;" value="{{ search }}">
+                </div>
+                <button class="btn-ghost" onclick="searchSkills()"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+                <a href="/admin/skill" class="btn-ghost" style="margin-left: 8px;">重置</a>
+                <button class="btn-cyber" onclick="openAddModal()" style="margin-left: 10px;"><i class="layui-icon layui-icon-add-1"></i> 新增技能</button>
+            </div>
+
+            <table class="layui-table" lay-skin="line">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th>名称</th>
+                        <th>编码</th>
+                        <th>描述</th>
+                        <th>配置</th>
+                        <th>排序</th>
+                        <th>状态</th>
+                        <th style="width: 240px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in skills %}
+                    <tr>
+                        <td>{{ item['id'] }}</td>
+                        <td style="font-weight: 600; color: #f8fafc;">{{ item['name'] }}</td>
+                        <td style="font-family: monospace; color: #60a5fa;">{{ item['code'] }}</td>
+                        <td>{{ item['description'] or '-' }}</td>
+                        <td><pre style="background: transparent; color: #cbd5e1; margin: 0; padding: 0; border: none; font-family: monospace;">{{ item['config'] or '{}' }}</pre></td>
+                        <td>{{ item['sort_order'] }}</td>
+                        <td>
+                            {% if item['is_enabled'] == 1 %}
+                            <span class="layui-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">启用</span>
+                            {% else %}
+                            <span class="layui-badge" style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.4);">禁用</span>
+                            {% end %}
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);" onclick="openEditModal({{ item['id'] }})">编辑</button>
+                            {% if item['is_enabled'] == 1 %}
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);" onclick="toggleSkill({{ item['id'] }}, 0)">禁用</button>
+                            {% else %}
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="toggleSkill({{ item['id'] }}, 1)">启用</button>
+                            {% end %}
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="deleteSkill({{ item['id'] }})">删除</button>
+                        </td>
+                    </tr>
+                    {% end %}
+                    {% if not skills %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">暂无技能，请点击上方“新增技能”按钮添加</td>
+                    </tr>
+                    {% end %}
+                </tbody>
+            </table>
+
+            <div id="pagination" style="margin-top: 20px; text-align: right;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="skillModal" style="display: none; padding: 24px;">
+    <form class="layui-form dark-form" lay-filter="skillForm" id="skillForm">
+        <input type="hidden" name="action" id="action" value="add">
+        <input type="hidden" name="id" id="skillId">
+        <div class="layui-form-item">
+            <label class="layui-form-label">技能名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" id="name" required lay-verify="required" class="layui-input" placeholder="如：当前时间感知">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">技能编码</label>
+            <div class="layui-input-block">
+                <input type="text" name="code" id="code" required lay-verify="required" class="layui-input" placeholder="如：current_time">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">描述</label>
+            <div class="layui-input-block">
+                <textarea name="description" id="description" class="layui-textarea" rows="2"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">配置（JSON）</label>
+            <div class="layui-input-block">
+                <textarea name="config" id="config" class="layui-textarea" rows="4" placeholder='{"format": "%Y-%m-%d %H:%M:%S"}' style="font-family: monospace;">{}</textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">排序</label>
+            <div class="layui-input-block">
+                <input type="number" name="sort_order" id="sort_order" value="0" class="layui-input">
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
+    var layer = layui.layer;
+    var form = layui.form;
+    var laypage = layui.laypage;
+    var $ = layui.jquery;
+
+    laypage.render({
+        elem: 'pagination',
+        count: {{ total }},
+        limit: 20,
+        curr: {{ page }},
+        theme: '#2563eb',
+        jump: function(obj, first){
+            if(!first){
+                var search = $('#searchInput').val();
+                window.location.href = '?page=' + obj.curr + '&search=' + encodeURIComponent(search);
+            }
+        }
+    });
+
+    window.searchSkills = function(){
+        var search = $('#searchInput').val();
+        window.location.href = '?page=1&search=' + encodeURIComponent(search);
+    };
+
+    window.openAddModal = function(){
+        $('#action').val('add');
+        $('#skillId').val('');
+        $('#name').val('');
+        $('#code').val('');
+        $('#description').val('');
+        $('#config').val('{}');
+        $('#sort_order').val('0');
+
+        layer.open({
+            type: 1,
+            title: '新增技能',
+            content: $('#skillModal'),
+            area: ['600px', '520px'],
+            btn: ['确定', '取消'],
+            yes: function(index){
+                submitSkillForm(index);
+            }
+        });
+    };
+
+    window.openEditModal = function(id){
+        $.post('/admin/skill', {
+            action: 'get_detail',
+            id: id,
+            _xsrf: getCookie('_xsrf')
+        }, function(res){
+            if(res.code == 0){
+                var item = res.data;
+                $('#action').val('edit');
+                $('#skillId').val(item.id);
+                $('#name').val(item.name);
+                $('#code').val(item.code);
+                $('#description').val(item.description || '');
+                $('#config').val(item.config || '{}');
+                $('#sort_order').val(item.sort_order || 0);
+
+                layer.open({
+                    type: 1,
+                    title: '编辑技能',
+                    content: $('#skillModal'),
+                    area: ['600px', '520px'],
+                    btn: ['确定', '取消'],
+                    yes: function(index){
+                        submitSkillForm(index);
+                    }
+                });
+            } else {
+                layer.msg(res.msg || '获取数据失败', {icon: 2});
+            }
+        });
+    };
+
+    window.toggleSkill = function(id, isEnabled){
+        layer.confirm('确定要' + (isEnabled == 1 ? '启用' : '禁用') + '该技能吗？', {icon: 3}, function(index){
+            $.post('/admin/skill', {
+                action: 'toggle',
+                id: id,
+                is_enabled: isEnabled,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code == 0){
+                    layer.msg(res.msg, {icon: 1});
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    };
+
+    window.deleteSkill = function(id){
+        layer.confirm('确定要删除该技能吗？', {icon: 3}, function(index){
+            $.post('/admin/skill', {
+                action: 'delete',
+                id: id,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code == 0){
+                    layer.msg(res.msg, {icon: 1});
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    };
+
+    function submitSkillForm(index){
+        var formData = {
+            action: $('#action').val(),
+            id: $('#skillId').val(),
+            name: $('#name').val(),
+            code: $('#code').val(),
+            description: $('#description').val(),
+            config: $('#config').val(),
+            sort_order: $('#sort_order').val(),
+            _xsrf: getCookie('_xsrf')
+        };
+
+        if(!formData.name || !formData.code){
+            layer.msg('请填写技能名称和编码');
+            return;
+        }
+
+        $.post('/admin/skill', formData, function(res){
+            if(res.code == 0){
+                layer.close(index);
+                layer.msg(res.msg, {icon: 1});
+                setTimeout(function(){ location.reload(); }, 1000);
+            } else {
+                layer.msg(res.msg, {icon: 2});
+            }
+        });
+    }
+});
+</script>
+{% end %}

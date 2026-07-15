@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+
+{% block body %}
+<style>
+.biz-container {
+    padding: 24px;
+    min-height: calc(100vh - 64px);
+    background: #0f172a;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(22, 93, 255, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(14, 59, 161, 0.15) 0px, transparent 50%);
+    color: #e2e8f0;
+}
+
+.biz-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.biz-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    font-size: 16px;
+    font-weight: 600;
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.biz-card-body {
+    padding: 20px;
+}
+
+.btn-cyber {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 20px;
+    height: 38px;
+    line-height: 38px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-cyber:hover {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    color: white;
+}
+
+.btn-ghost {
+    background: rgba(51, 65, 85, 0.5);
+    color: #cbd5e1;
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    border-radius: 6px;
+    padding: 0 20px;
+    height: 38px;
+    line-height: 36px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-ghost:hover {
+    background: rgba(71, 85, 105, 0.8);
+    color: white;
+}
+
+.dark-input {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+    border-radius: 6px !important;
+}
+.dark-input:focus {
+    border-color: #3b82f6 !important;
+}
+
+.layui-table {
+    background-color: transparent !important;
+    color: #cbd5e1 !important;
+}
+.layui-table thead tr {
+    background-color: rgba(15, 23, 42, 0.6) !important;
+}
+.layui-table th {
+    color: #f8fafc;
+    font-weight: 600;
+    border-color: rgba(51, 65, 85, 0.5) !important;
+}
+.layui-table td {
+    border-color: rgba(51, 65, 85, 0.5) !important;
+}
+.layui-table tbody tr:hover, .layui-table-hover {
+    background-color: rgba(30, 41, 59, 0.8) !important;
+}
+
+.layui-laypage a, .layui-laypage span {
+    background-color: rgba(30, 41, 59, 0.6) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+}
+.layui-laypage .layui-laypage-curr .layui-laypage-em {
+    background-color: #2563eb !important;
+}
+
+.layui-layer-page .layui-layer-content {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+.layui-layer-title {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    border-bottom: 1px solid #334155 !important;
+}
+.dark-form .layui-form-label {
+    color: #cbd5e1;
+}
+.dark-form .layui-input, .dark-form .layui-textarea, .dark-form .layui-select {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #f8fafc;
+}
+.dark-form .layui-input:focus, .dark-form .layui-textarea:focus {
+    border-color: #3b82f6 !important;
+}
+</style>
+
+<div class="biz-container">
+    <div class="biz-card">
+        <div class="biz-card-header">
+            <i class="layui-icon layui-icon-link" style="color: #3b82f6;"></i> 接口管理
+        </div>
+        <div class="biz-card-body">
+            <div class="layui-form-item" style="margin-bottom: 24px;">
+                <div class="layui-inline" style="margin-right: 16px;">
+                    <input type="text" id="searchInput" placeholder="请输入接口名称..." class="layui-input dark-input" style="width: 300px;" value="{{ search }}">
+                </div>
+                <button class="btn-ghost" onclick="searchInterfaces()"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+                <a href="/admin/api_interface" class="btn-ghost" style="margin-left: 8px;">重置</a>
+                <button class="btn-cyber" onclick="openAddModal()" style="margin-left: 10px;"><i class="layui-icon layui-icon-add-1"></i> 新增接口</button>
+            </div>
+
+            <table class="layui-table" lay-skin="line">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th>名称</th>
+                        <th>API URL</th>
+                        <th>方法</th>
+                        <th>响应类型</th>
+                        <th>卡片类型</th>
+                        <th>排序</th>
+                        <th>状态</th>
+                        <th style="width: 320px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in interfaces %}
+                    <tr>
+                        <td>{{ item['id'] }}</td>
+                        <td style="font-weight: 600; color: #f8fafc;">{{ item['name'] }}</td>
+                        <td style="font-family: monospace; color: #60a5fa;">{{ item['api_url'] }}</td>
+                        <td>{{ item['api_method'] or 'GET' }}</td>
+                        <td>{{ item['response_type'] or 'json' }}</td>
+                        <td>{{ item['card_type'] or '-' }}</td>
+                        <td>{{ item['sort_order'] }}</td>
+                        <td>
+                            {% if item['is_enabled'] == 1 %}
+                            <span class="layui-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">启用</span>
+                            {% else %}
+                            <span class="layui-badge" style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.4);">禁用</span>
+                            {% end %}
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);" onclick="openEditModal({{ item['id'] }})">编辑</button>
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="previewInterface({{ item['id'] }})">预览</button>
+                            <a href="/admin/digital?interface_id={{ item['id'] }}" class="layui-btn layui-btn-xs" style="background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.4);">创建数字员工</a>
+                            {% if item['is_enabled'] == 1 %}
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);" onclick="toggleInterface({{ item['id'] }}, 0)">禁用</button>
+                            {% else %}
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="toggleInterface({{ item['id'] }}, 1)">启用</button>
+                            {% end %}
+                            <button class="layui-btn layui-btn-xs" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="deleteInterface({{ item['id'] }})">删除</button>
+                        </td>
+                    </tr>
+                    {% end %}
+                    {% if not interfaces %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">暂无接口，请点击上方“新增接口”按钮添加</td>
+                    </tr>
+                    {% end %}
+                </tbody>
+            </table>
+
+            <div id="pagination" style="margin-top: 20px; text-align: right;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="interfaceModal" style="display: none; padding: 24px;">
+    <form class="layui-form dark-form" lay-filter="interfaceForm" id="interfaceForm">
+        <input type="hidden" name="action" id="action" value="add">
+        <input type="hidden" name="id" id="interfaceId">
+        <div class="layui-form-item">
+            <label class="layui-form-label">接口名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" id="name" required lay-verify="required" class="layui-input" placeholder="如：天气查询接口">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">描述</label>
+            <div class="layui-input-block">
+                <textarea name="description" id="description" class="layui-textarea" rows="2"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">API URL</label>
+            <div class="layui-input-block">
+                <input type="text" name="api_url" id="api_url" required lay-verify="required" class="layui-input" placeholder="https://example.com/api">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">请求方法</label>
+            <div class="layui-input-block">
+                <select name="api_method" id="api_method">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">请求头（JSON）</label>
+            <div class="layui-input-block">
+                <textarea name="api_headers" id="api_headers" class="layui-textarea" rows="3" placeholder='{"Content-Type": "application/json"}' style="font-family: monospace;">{}</textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">请求参数（JSON）</label>
+            <div class="layui-input-block">
+                <textarea name="api_params" id="api_params" class="layui-textarea" rows="3" placeholder='{"param": "value"}' style="font-family: monospace;">{}</textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">请求体（JSON）</label>
+            <div class="layui-input-block">
+                <textarea name="api_body" id="api_body" class="layui-textarea" rows="3" placeholder='{"key": "value"}' style="font-family: monospace;">{}</textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">响应类型</label>
+            <div class="layui-input-block">
+                <select name="response_type" id="response_type">
+                    <option value="json">JSON</option>
+                    <option value="text">纯文本</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">卡片类型</label>
+            <div class="layui-input-block">
+                <select name="card_type" id="card_type">
+                    <option value="">无（纯文本）</option>
+                    <option value="weather">天气卡片</option>
+                    <option value="json">JSON 数据卡片</option>
+                    <option value="table">表格卡片</option>
+                    <option value="html">HTML 卡片</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">排序</label>
+            <div class="layui-input-block">
+                <input type="number" name="sort_order" id="sort_order" value="0" class="layui-input">
+            </div>
+        </div>
+    </form>
+</div>
+
+<div id="previewModal" style="display: none; padding: 20px;">
+    <div class="layui-form-item">
+        <label class="layui-form-label" style="color: #cbd5e1;">预览参数</label>
+        <div class="layui-input-block">
+            <textarea id="previewParams" class="layui-textarea dark-input" rows="3" placeholder='{"param": "value"}' style="font-family: monospace;">{}</textarea>
+        </div>
+    </div>
+    <div id="previewResult" style="display: none;">
+        <div class="layui-form-item">
+            <label class="layui-form-label" style="color: #cbd5e1;">预览结果</label>
+            <div class="layui-input-block">
+                <pre id="previewOutput" style="background: #1e293b; padding: 10px; border-radius: 4px; max-height: 400px; overflow-y: auto; color: #f8fafc; border: 1px solid #334155;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
+    var layer = layui.layer;
+    var form = layui.form;
+    var laypage = layui.laypage;
+    var $ = layui.jquery;
+
+    laypage.render({
+        elem: 'pagination',
+        count: {{ total }},
+        limit: 20,
+        curr: {{ page }},
+        theme: '#2563eb',
+        jump: function(obj, first){
+            if(!first){
+                var search = $('#searchInput').val();
+                window.location.href = '?page=' + obj.curr + '&search=' + encodeURIComponent(search);
+            }
+        }
+    });
+
+    window.searchInterfaces = function(){
+        var search = $('#searchInput').val();
+        window.location.href = '?page=1&search=' + encodeURIComponent(search);
+    };
+
+    window.openAddModal = function(){
+        $('#action').val('add');
+        $('#interfaceId').val('');
+        $('#name').val('');
+        $('#description').val('');
+        $('#api_url').val('');
+        $('#api_method').val('GET');
+        $('#api_headers').val('{}');
+        $('#api_params').val('{}');
+        $('#api_body').val('{}');
+        $('#response_type').val('json');
+        $('#card_type').val('');
+        $('#sort_order').val('0');
+        form.render('select');
+
+        layer.open({
+            type: 1,
+            title: '新增接口',
+            content: $('#interfaceModal'),
+            area: ['700px', '700px'],
+            btn: ['确定', '取消'],
+            yes: function(index){
+                submitInterfaceForm(index);
+            }
+        });
+    };
+
+    window.openEditModal = function(id){
+        $.post('/admin/api_interface', {
+            action: 'get_detail',
+            id: id,
+            _xsrf: getCookie('_xsrf')
+        }, function(res){
+            if(res.code == 0){
+                var item = res.data;
+                $('#action').val('edit');
+                $('#interfaceId').val(item.id);
+                $('#name').val(item.name);
+                $('#description').val(item.description || '');
+                $('#api_url').val(item.api_url);
+                $('#api_method').val(item.api_method || 'GET');
+                $('#api_headers').val(item.api_headers || '{}');
+                $('#api_params').val(item.api_params || '{}');
+                $('#api_body').val(item.api_body || '{}');
+                $('#response_type').val(item.response_type || 'json');
+                $('#card_type').val(item.card_type || '');
+                $('#sort_order').val(item.sort_order || 0);
+                form.render('select');
+
+                layer.open({
+                    type: 1,
+                    title: '编辑接口',
+                    content: $('#interfaceModal'),
+                    area: ['700px', '700px'],
+                    btn: ['确定', '取消'],
+                    yes: function(index){
+                        submitInterfaceForm(index);
+                    }
+                });
+            } else {
+                layer.msg(res.msg || '获取数据失败', {icon: 2});
+            }
+        });
+    };
+
+    window.previewInterface = function(id){
+        $('#previewParams').val('{}');
+        $('#previewResult').hide();
+        layer.open({
+            type: 1,
+            title: '接口预览',
+            content: $('#previewModal'),
+            area: ['700px', '550px'],
+            btn: ['执行预览', '关闭'],
+            yes: function(index, layero){
+                var params = $('#previewParams').val();
+                $.post('/admin/api_interface', {
+                    action: 'preview',
+                    id: id,
+                    params: params,
+                    _xsrf: getCookie('_xsrf')
+                }, function(res){
+                    if(res.code == 0){
+                        $('#previewOutput').text(JSON.stringify(res.data, null, 2));
+                        $('#previewResult').show();
+                    } else {
+                        $('#previewOutput').text(res.msg || '预览失败');
+                        $('#previewResult').show();
+                    }
+                });
+            }
+        });
+    };
+
+    window.toggleInterface = function(id, isEnabled){
+        layer.confirm('确定要' + (isEnabled == 1 ? '启用' : '禁用') + '该接口吗？', {icon: 3}, function(index){
+            $.post('/admin/api_interface', {
+                action: 'toggle',
+                id: id,
+                is_enabled: isEnabled,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code == 0){
+                    layer.msg(res.msg, {icon: 1});
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    };
+
+    window.deleteInterface = function(id){
+        layer.confirm('确定要删除该接口吗？', {icon: 3}, function(index){
+            $.post('/admin/api_interface', {
+                action: 'delete',
+                id: id,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code == 0){
+                    layer.msg(res.msg, {icon: 1});
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    };
+
+    function submitInterfaceForm(index){
+        var formData = {
+            action: $('#action').val(),
+            id: $('#interfaceId').val(),
+            name: $('#name').val(),
+            description: $('#description').val(),
+            api_url: $('#api_url').val(),
+            api_method: $('#api_method').val(),
+            api_headers: $('#api_headers').val(),
+            api_params: $('#api_params').val(),
+            api_body: $('#api_body').val(),
+            response_type: $('#response_type').val(),
+            card_type: $('#card_type').val(),
+            sort_order: $('#sort_order').val(),
+            _xsrf: getCookie('_xsrf')
+        };
+
+        if(!formData.name || !formData.api_url){
+            layer.msg('请填写接口名称和 API URL');
+            return;
+        }
+
+        $.post('/admin/api_interface', formData, function(res){
+            if(res.code == 0){
+                layer.close(index);
+                layer.msg(res.msg, {icon: 1});
+                setTimeout(function(){ location.reload(); }, 1000);
+            } else {
+                layer.msg(res.msg, {icon: 2});
+            }
+        });
+    }
+});
+</script>
+{% end %}

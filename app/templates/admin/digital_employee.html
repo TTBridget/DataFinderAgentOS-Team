@@ -41,6 +41,9 @@
                             <span class="layui-badge layui-bg-blue">LLM 员工</span>
                             {% else %}
                             <span class="layui-badge layui-bg-orange">API 员工</span>
+                            {% if emp['api_interface_id'] %}
+                            <span class="layui-badge layui-bg-cyan">接口联动</span>
+                            {% end %}
                             {% end %}
                         </td>
                         <td>{{ emp['description'] }}</td>
@@ -95,8 +98,8 @@
         <div class="layui-form-item">
             <label class="layui-form-label">员工类型</label>
             <div class="layui-input-block">
-                <input type="radio" name="type" value="llm" title="LLM 员工" checked lay-filter="typeRadio">
-                <input type="radio" name="type" value="api" title="API 员工" lay-filter="typeRadio">
+                <input type="radio" name="type_tpl" value="llm" title="LLM 员工" checked lay-filter="typeRadio">
+                <input type="radio" name="type_tpl" value="api" title="API 员工" lay-filter="typeRadio">
             </div>
         </div>
         
@@ -146,6 +149,18 @@
         </div>
         
         <div id="apiFields" style="display: none;">
+            <div class="layui-form-item">
+                <label class="layui-form-label">关联接口</label>
+                <div class="layui-input-block">
+                    <select name="api_interface_id" id="apiInterfaceId" lay-filter="interfaceSelect">
+                        <option value="">不关联接口（手动填写）</option>
+                        {% for interface in interfaces %}
+                        <option value="{{ interface['id'] }}" data-url="{{ interface['api_url'] }}" data-method="{{ interface['api_method'] }}" data-headers="{{ interface['api_headers'] or '' }}" data-params="{{ interface['api_params'] or '' }}" data-card="{{ interface['card_type'] or '' }}">{{ interface['name'] }}</option>
+                        {% end %}
+                    </select>
+                </div>
+            </div>
+
             <div class="layui-form-item">
                 <label class="layui-form-label">API URL</label>
                 <div class="layui-input-block">
@@ -230,7 +245,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
     layer = ly;
     form = fm;
     $ = jq;
-    
+
     laypage.render({
         elem: 'pagination',
         count: {{ total }},
@@ -255,6 +270,29 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
             $form.find('#apiFields').show();
         }
     });
+
+    function decodeHtmlEntities(str){
+        if(!str) return str;
+        var txt = document.createElement('textarea');
+        txt.innerHTML = str;
+        return txt.value;
+    }
+
+    form.on('select(interfaceSelect)', function(data){
+        var $form = $(data.elem).closest('.layui-form');
+        var $option = $form.find('#apiInterfaceId option:selected');
+        var interfaceId = $option.val();
+        if(interfaceId){
+            // 使用 attr 读取原始字符串，避免 jQuery .data() 将 JSON 解析为对象后显示 [object Object]
+            // 同时解码 Tornado 模板自动转义的 HTML 实体（如 &quot;）
+            $form.find('#apiUrl').val(decodeHtmlEntities($option.attr('data-url')));
+            $form.find('#apiMethod').val(decodeHtmlEntities($option.attr('data-method')));
+            $form.find('#apiHeaders').val(decodeHtmlEntities($option.attr('data-headers')));
+            $form.find('#apiParams').val(decodeHtmlEntities($option.attr('data-params')));
+            $form.find('#cardType').val(decodeHtmlEntities($option.attr('data-card')));
+        }
+        form.render('select');
+    });
     
     window.searchEmployees = function(){
         var search = document.getElementById('searchInput').value;
@@ -274,6 +312,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
         $form.find('#empDesc').val(isEdit ? (emp.description || '') : '');
         $form.find('#modelId').val(isEdit ? (emp.model_id || '') : '');
         $form.find('#systemPrompt').val(isEdit ? (emp.system_prompt || '') : '');
+        $form.find('#apiInterfaceId').val(isEdit ? (emp.api_interface_id || '') : '');
         $form.find('#apiUrl').val(isEdit ? (emp.api_url || '') : '');
         $form.find('#apiMethod').val(isEdit ? (emp.api_method || 'GET') : 'GET');
         $form.find('#apiHeaders').val(isEdit ? (emp.api_headers || '') : '');
@@ -308,19 +347,44 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
         $form.find('#ndFileList').html(fileListHtml);
     }
     
-    window.openAddModal = function(){
+    window.openAddModal = function(preselectInterfaceId){
         layer.open({
             type: 1,
             title: '新增数字员工',
-            content: $('#employeeModal').html(),
+            content: $('#employeeModal').html().replace(/name="type_tpl"/g, 'name="type"'),
             area: ['600px', '700px'],
             closeBtn: 1,
             shadeClose: true,
             btn: ['保存', '取消'],
             success: function(layero, index){
                 var $form = layero.find('#employeeForm');
-                initEmployeeForm($form);
+                initEmployeeForm($form, preselectInterfaceId ? {type: 'api', api_interface_id: preselectInterfaceId} : null);
+                if(preselectInterfaceId){
+                    // 从接口管理联动创建：预选中接口并切换到 API 类型，自动填充接口配置
+                    $form.find('input[name="type"][value="api"]').prop('checked', true);
+                    $form.find('#llmFields').hide();
+                    $form.find('#apiFields').show();
+                    $form.find('#apiInterfaceId').val(preselectInterfaceId);
+                    var $option = $form.find('#apiInterfaceId option:selected');
+                    if($option.val()){
+                        $form.find('#apiUrl').val(decodeHtmlEntities($option.attr('data-url')));
+                        $form.find('#apiMethod').val(decodeHtmlEntities($option.attr('data-method')));
+                        $form.find('#apiHeaders').val(decodeHtmlEntities($option.attr('data-headers')));
+                        $form.find('#apiParams').val(decodeHtmlEntities($option.attr('data-params')));
+                        $form.find('#cardType').val(decodeHtmlEntities($option.attr('data-card')));
+                    }
+                }
                 form.render();
+                // 直接监听类型切换，兼容 Layui radio 事件偶发不触发的问题
+                $form.find('input[name="type"]').on('change', function(){
+                    if($(this).val() == 'llm'){
+                        $form.find('#llmFields').show();
+                        $form.find('#apiFields').hide();
+                    } else {
+                        $form.find('#llmFields').hide();
+                        $form.find('#apiFields').show();
+                    }
+                });
                 // 监听文件选择，显示本次待上传的文件名
                 $form.find('#ndFiles').on('change', function(){
                     var names = [];
@@ -355,7 +419,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                 layer.open({
                     type: 1,
                     title: '编辑数字员工',
-                    content: $('#employeeModal').html(),
+                    content: $('#employeeModal').html().replace(/name="type_tpl"/g, 'name="type"'),
                     area: ['600px', '700px'],
                     closeBtn: 1,
                     shadeClose: true,
@@ -364,6 +428,16 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                         var $form = layero.find('#employeeForm');
                         initEmployeeForm($form, emp);
                         form.render();
+                        // 直接监听类型切换，兼容 Layui radio 事件偶发不触发的问题
+                        $form.find('input[name="type"]').on('change', function(){
+                            if($(this).val() == 'llm'){
+                                $form.find('#llmFields').show();
+                                $form.find('#apiFields').hide();
+                            } else {
+                                $form.find('#llmFields').hide();
+                                $form.find('#apiFields').show();
+                            }
+                        });
                         // 监听文件选择，显示本次待上传的文件名
                         $form.find('#ndFiles').on('change', function(){
                             var names = [];
@@ -417,6 +491,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                     html += '<div class="layui-form-item"><label class="layui-form-label">Prompt 文件</label><div class="layui-input-block"><span class="layui-form-mid">' + ndFiles + '</span></div></div>';
                     html += '<div class="layui-form-item"><label class="layui-form-label">功能增强</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.use_skills == 1 ? '✓ 启用技能 ' : '') + (emp.use_crawl4ai == 1 ? '✓ 启用网页抓取' : '') + '</span></div></div>';
                 } else {
+                    html += '<div class="layui-form-item"><label class="layui-form-label">关联接口</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.interface_name || '无') + '</span></div></div>';
                     html += '<div class="layui-form-item"><label class="layui-form-label">API URL</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.api_url || '-') + '</span></div></div>';
                     html += '<div class="layui-form-item"><label class="layui-form-label">请求方法</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.api_method || 'GET') + '</span></div></div>';
                     html += '<div class="layui-form-item"><label class="layui-form-label">请求头</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">' + (emp.api_headers || '-') + '</pre></div></div>';
@@ -465,9 +540,11 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                 layero.find('#previewResult').hide();
             },
             yes: function(index, layero){
+                var previewParams = layero.find('#previewParams').val() || '{}';
                 $.post('/admin/digital', {
                     action: 'preview_api',
                     id: id,
+                    preview_params: previewParams,
                     _xsrf: getCookie('_xsrf')
                 }, function(res){
                     if(res.code == 0){
@@ -530,10 +607,12 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
         formData.append('system_prompt', $form.find('#systemPrompt').val());
         formData.append('use_skills', $form.find('input[name="use_skills"]:checked').val() || 0);
         formData.append('use_crawl4ai', $form.find('input[name="use_crawl4ai"]:checked').val() || 0);
+        formData.append('api_interface_id', $form.find('#apiInterfaceId').val() || '');
         formData.append('api_url', $form.find('#apiUrl').val());
         formData.append('api_method', $form.find('#apiMethod').val());
         formData.append('api_headers', $form.find('#apiHeaders').val());
         formData.append('api_params', $form.find('#apiParams').val());
+        formData.append('card_type', $form.find('#cardType').val() || '');
         formData.append('sort_order', $form.find('#sortOrder').val());
         formData.append('_xsrf', getCookie('_xsrf'));
         
@@ -575,6 +654,13 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                 layer.msg(msg, {icon: 2});
             }
         });
+    }
+
+    // 如果从接口管理联动创建（URL 携带 ?interface_id=X），自动打开新增弹窗并预选中接口
+    var urlParams = new URLSearchParams(window.location.search);
+    var linkedInterfaceId = urlParams.get('interface_id');
+    if(linkedInterfaceId){
+        window.openAddModal(linkedInterfaceId);
     }
 });
 </script>
