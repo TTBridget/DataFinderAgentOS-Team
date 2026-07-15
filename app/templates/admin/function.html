@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="layui-body-content" style="padding: 20px;">
+    <div class="layui-card">
+        <div class="layui-card-header">功能管理</div>
+        <div class="layui-card-body">
+            <!-- 搜索和功能区 -->
+            <div class="layui-form-item" style="margin-bottom: 20px;">
+                <div class="layui-inline">
+                    <input type="text" id="searchInput" placeholder="请输入功能名或编码" class="layui-input" style="width: 200px;">
+                </div>
+                <button class="layui-btn" onclick="searchFunctions()"><i class="layui-icon layui-icon-search"></i>搜索</button>
+                <button class="layui-btn layui-btn-normal" onclick="openAddModal()"><i class="layui-icon layui-icon-add-1"></i>添加功能</button>
+            </div>
+            
+            <!-- 表格区 -->
+            <table class="layui-table" lay-skin="line">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>功能名</th>
+                        <th>编码</th>
+                        <th>图标</th>
+                        <th>路由</th>
+                        <th>父级</th>
+                        <th>排序</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for func in functions %}
+                    <tr>
+                        <td>{{ func['id'] }}</td>
+                        <td>{{ func['name'] }}</td>
+                        <td>{{ func['code'] }}</td>
+                        <td><i class="layui-icon {{ func['icon'] or '' }}"></i></td>
+                        <td>{{ func['route'] or '-' }}</td>
+                        <td>{{ func['parent_id'] or '顶级' }}</td>
+                        <td>{{ func['sort_order'] }}</td>
+                        <td>
+                            {% if func['is_disabled'] == 1 %}
+                            <span class="layui-badge layui-bg-gray">已禁用</span>
+                            {% else %}
+                            <span class="layui-badge layui-bg-green">正常</span>
+                            {% end %}
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="openEditModal({{ func['id'] }}, {{ json_encode(func['name']) }}, {{ json_encode(func['code']) }}, {{ json_encode(func['icon'] or '') }}, {{ json_encode(func['route'] or '') }}, {{ func['parent_id'] or 0 }}, {{ func['sort_order'] }})">编辑</button>
+                            {% if func['is_disabled'] == 1 %}
+                            <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="toggleFunction({{ func['id'] }}, 0)">启用</button>
+                            {% else %}
+                            <button class="layui-btn layui-btn-xs layui-btn-warm" onclick="toggleFunction({{ func['id'] }}, 1)">禁用</button>
+                            {% end %}
+                            <button class="layui-btn layui-btn-xs layui-btn-danger" onclick="deleteFunction({{ func['id'] }})">删除</button>
+                        </td>
+                    </tr>
+                    {% end %}
+                </tbody>
+            </table>
+            
+            <!-- 分页区 -->
+            <div id="pagination"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑功能弹窗 -->
+<div id="functionModal" style="display: none; padding: 20px;">
+    <form class="layui-form">
+        <input type="hidden" name="action" id="action" value="add">
+        <input type="hidden" name="id" id="functionId">
+        <div class="layui-form-item">
+            <label class="layui-form-label">功能名</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" id="name" required lay-verify="required" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">编码</label>
+            <div class="layui-input-block">
+                <input type="text" name="code" id="code" required lay-verify="required" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">图标</label>
+            <div class="layui-input-block">
+                <input type="text" name="icon" id="icon" placeholder="layui-icon-xxx" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">路由</label>
+            <div class="layui-input-block">
+                <input type="text" name="route" id="route" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">父级</label>
+            <div class="layui-input-block">
+                <select name="parent_id" id="parentId">
+                    <option value="0">顶级功能</option>
+                    {% for p in parents %}
+                    <option value="{{ p['id'] }}">{{ p['name'] }}</option>
+                    {% end %}
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">排序</label>
+            <div class="layui-input-block">
+                <input type="number" name="sort_order" id="sortOrder" value="0" class="layui-input">
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
+    var layer = layui.layer;
+    var form = layui.form;
+    var laypage = layui.laypage;
+    var $ = layui.jquery;
+    
+    // 分页
+    laypage.render({
+        elem: 'pagination',
+        count: {{ total }},
+        limit: 20,
+        curr: {{ page }},
+        jump: function(obj, first){
+            if(!first){
+                window.location.href = '?page=' + obj.curr + '&search=' + $('#searchInput').val();
+            }
+        }
+    });
+    
+    window.searchFunctions = function(){
+        var search = $('#searchInput').val();
+        window.location.href = '?search=' + search;
+    }
+    
+    window.openAddModal = function(){
+        $('#action').val('add');
+        $('#functionId').val('');
+        $('#name').val('');
+        $('#code').val('');
+        $('#icon').val('');
+        $('#route').val('');
+        $('#parentId').val('0');
+        $('#sortOrder').val('0');
+        form.render('select');
+        
+        layer.open({
+            type: 1,
+            title: '添加功能',
+            content: $('#functionModal'),
+            area: ['500px', '500px'],
+            btn: ['确定', '取消'],
+            yes: function(index){
+                submitFunctionForm(index);
+            }
+        });
+    }
+    
+    window.openEditModal = function(id, name, code, icon, route, parentId, sortOrder){
+        $('#action').val('edit');
+        $('#functionId').val(id);
+        $('#name').val(name);
+        $('#code').val(code);
+        $('#icon').val(icon);
+        $('#route').val(route);
+        $('#parentId').val(parentId);
+        $('#sortOrder').val(sortOrder);
+        form.render('select');
+        
+        layer.open({
+            type: 1,
+            title: '编辑功能',
+            content: $('#functionModal'),
+            area: ['500px', '500px'],
+            btn: ['确定', '取消'],
+            yes: function(index){
+                submitFunctionForm(index);
+            }
+        });
+    }
+    
+    function submitFunctionForm(index){
+        var formData = {
+            action: $('#action').val(),
+            id: $('#functionId').val(),
+            name: $('#name').val(),
+            code: $('#code').val(),
+            icon: $('#icon').val(),
+            route: $('#route').val(),
+            parent_id: $('#parentId').val(),
+            sort_order: $('#sortOrder').val(),
+            _xsrf: getCookie('_xsrf')
+        };
+        
+        if(!formData.name || !formData.code){
+            layer.msg('请填写完整信息');
+            return;
+        }
+        
+        $.post('/admin/function', formData, function(res){
+            if(res.code === 0){
+                layer.close(index);
+                layer.msg(res.msg, {icon: 1});
+                setTimeout(function(){ location.reload(); }, 1000);
+            } else {
+                layer.msg(res.msg, {icon: 2});
+            }
+        });
+    }
+    
+    window.toggleFunction = function(id, isDisabled){
+        layer.confirm('确定要' + (isDisabled ? '禁用' : '启用') + '该功能吗？', {icon: 3}, function(index){
+            $.post('/admin/function', {
+                action: 'toggle',
+                id: id,
+                is_disabled: isDisabled,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code === 0){
+                    layer.msg(res.msg, {icon: 1});
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    }
+    
+    window.deleteFunction = function(id){
+        layer.confirm('确定要删除该功能吗？', {icon: 3}, function(index){
+            $.post('/admin/function', {
+                action: 'delete',
+                id: id,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code === 0){
+                    layer.msg(res.msg, {icon: 1});
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    }
+});
+</script>
+{% end %}

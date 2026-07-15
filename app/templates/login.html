@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block body %}
+<style>
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+    padding: 20px;
+}
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+    padding: 48px 40px;
+    box-sizing: border-box;
+}
+.auth-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 32px;
+}
+.auth-logo i {
+    font-size: 36px;
+    color: #165DFF;
+}
+.auth-logo h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1d2129;
+    margin: 0;
+}
+.auth-title {
+    text-align: center;
+    font-size: 18px;
+    color: #4e5969;
+    margin-bottom: 32px;
+}
+.auth-form .form-item {
+    margin-bottom: 20px;
+}
+.auth-form label {
+    display: block;
+    font-size: 14px;
+    color: #4e5969;
+    margin-bottom: 8px;
+}
+.auth-form input {
+    width: 100%;
+    height: 44px;
+    padding: 0 16px;
+    border: 1px solid #e5e6eb;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #1d2129;
+    background: #f7f8fa;
+    box-sizing: border-box;
+    transition: all 0.2s;
+}
+.auth-form input:focus {
+    outline: none;
+    border-color: #165DFF;
+    background: #ffffff;
+}
+.auth-form button {
+    width: 100%;
+    height: 46px;
+    margin-top: 12px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #165DFF 0%, #0E42D2 100%);
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.auth-form button:hover {
+    box-shadow: 0 8px 20px rgba(22,93,255,0.3);
+    transform: translateY(-1px);
+}
+.auth-error {
+    background: #fff2f0;
+    border: 1px solid #ffccc7;
+    color: #ff4d4f;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+.auth-footer {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 14px;
+    color: #86909c;
+}
+.auth-footer a {
+    color: #165DFF;
+    text-decoration: none;
+    font-weight: 500;
+}
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+</style>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <i class="layui-icon layui-icon-engine"></i>
+            <h1>智能瞭望与问数</h1>
+        </div>
+        <div class="auth-title">欢迎登录</div>
+        
+        {% if error %}
+        <div class="auth-error">{{ error }}</div>
+        {% end %}
+        
+        <form class="auth-form" method="post" action="/login">
+            {% module xsrf_form_html() %}
+            <div class="form-item">
+                <label>用户名</label>
+                <input type="text" name="username" placeholder="请输入用户名" required minlength="3" maxlength="32">
+            </div>
+            <div class="form-item">
+                <label>密码</label>
+                <input type="password" name="password" placeholder="请输入密码" required minlength="6" maxlength="64">
+            </div>
+            <button type="submit">登 录</button>
+        </form>
+        
+        <div class="auth-footer">
+            还没有账号？<a href="/register">立即注册</a>
+        </div>
+    </div>
+</div>
+{% end %}

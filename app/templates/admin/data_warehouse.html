@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="layui-body-content" style="padding: 20px;">
+    <div class="layui-card">
+        <div class="layui-card-header">数据仓库</div>
+        <div class="layui-card-body">
+            <div class="layui-form-item" style="margin-bottom: 20px;">
+                <div class="layui-inline">
+                    <input type="text" id="searchInput" placeholder="请输入标题/关键词/来源" class="layui-input" style="width: 250px;" value="{{ search }}">
+                </div>
+                <button class="layui-btn" onclick="searchData()"><i class="layui-icon layui-icon-search"></i>搜索</button>
+                <a href="/admin/data_warehouse" class="layui-btn layui-btn-primary">重置</a>
+                <button class="layui-btn layui-btn-normal" onclick="batchDeepCollect()" style="margin-left: 10px;"><i class="layui-icon layui-icon-add-circle"></i>批量深度采集</button>
+            </div>
+            
+            <table class="layui-table" lay-skin="line">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"><i class="layui-icon layui-icon-checkbox" id="selectAllIcon" style="cursor: pointer; font-size: 20px; color: #999;"></i></th>
+                        <th style="width: 60px;">ID</th>
+                        <th>标题</th>
+                        <th>来源</th>
+                        <th>关键词</th>
+                        <th style="width: 150px;">发布时间</th>
+                        <th style="width: 100px;">深度采集</th>
+                        <th style="width: 150px;">保存时间</th>
+                        <th style="width: 300px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><input type="checkbox" name="dataItem" value="{{ item['id'] }}"></td>
+                        <td>{{ item['id'] }}</td>
+                        <td>
+                            <a href="{{ item['url'] }}" target="_blank" style="color: #01AAED;">{{ item['title'] }}</a>
+                        </td>
+                        <td>{{ item['source_name'] }}</td>
+                        <td>{{ item['keyword'] }}</td>
+                        <td>{{ item['publish_time'] }}</td>
+                        <td>
+                            {% if item['is_deep_collected'] == 1 %}
+                            <span class="layui-badge layui-bg-green">已采集</span>
+                            {% else %}
+                            <span class="layui-badge layui-bg-gray">未采集</span>
+                            {% end %}
+                        </td>
+                        <td>{{ item['created_at'] }}</td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="viewData({{ item['id'] }}, '{{ escape(item['title']) }}', '{{ escape(item['content']) }}')">查看</button>
+                            
+                            {% if item['is_deep_collected'] == 0 %}
+                            <button class="layui-btn layui-btn-xs" onclick="openDeepCollectPanel({{ item['id'] }})">深度采集</button>
+                            {% else %}
+                            <button class="layui-btn layui-btn-xs layui-btn-warm" onclick="openDeepDataViewer({{ item['id'] }})">深度数据</button>
+                            <button class="layui-btn layui-btn-xs" onclick="openDeepCollectPanel({{ item['id'] }})">更新采集</button>
+                            {% end %}
+                            
+                            <button class="layui-btn layui-btn-xs layui-btn-danger" onclick="deleteData({{ item['id'] }})">删除</button>
+                        </td>
+                    </tr>
+                    {% end %}
+                    {% if not items %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 30px 0; color: #999;">暂无数据，请先从“瞭望中心”采集并保存</td>
+                    </tr>
+                    {% end %}
+                </tbody>
+            </table>
+            
+            <div id="pagination"></div>
+        </div>
+    </div>
+</div>
+
+<div id="deepCollectPanel" style="display: none; padding: 20px;">
+    <div class="layui-form" lay-filter="deepCollectForm">
+        <div class="layui-form-item">
+            <label class="layui-form-label">选择数字员工</label>
+            <div class="layui-input-block">
+                <select name="employee_id" id="employeeSelect" lay-search>
+                    <option value="">请选择采集专员</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label">采集说明</label>
+            <div class="layui-input-block">
+                <textarea name="collect_note" id="collectNote" class="layui-textarea" rows="3" placeholder="请输入采集任务说明（可选）"></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <div id="taskStatusPanel" style="display: none; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div style="text-align: center;">
+                    <div id="statusBadge" class="layui-badge layui-bg-gray" style="font-size: 16px; padding: 8px 16px;">等待启动</div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div style="text-align: center;">
+                    <div style="font-size: 24px; font-weight: bold; color: #165DFF;" id="progressText">0%</div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div style="text-align: center;">
+                    <div style="font-size: 14px; color: #666;" id="employeeName">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="layui-progress layui-progress-big" lay-showPercent="true" style="margin-top: 20px;">
+            <div class="layui-progress-bar" id="progressBar" style="width: 0%;"></div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h4 style="margin-bottom: 10px;"><i class="layui-icon layui-icon-list"></i> 采集步骤</h4>
+            <ul id="stepsList" style="list-style: none; padding: 0;">
+            </ul>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h4 style="margin-bottom: 10px;"><i class="layui-icon layui-icon-log"></i> 执行日志</h4>
+            <div id="logsContainer" style="height: 150px; overflow-y: auto; background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px; color: #666;">
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; display: none;" id="resultPanel">
+            <h4 style="margin-bottom: 10px;"><i class="layui-icon layui-icon-file"></i> 采集结果</h4>
+            <div id="resultContent" style="background: #f0f9ff; padding: 15px; border-radius: 4px;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="deepDataViewer" style="display: none; padding: 20px;">
+    <div id="deepDataContent"></div>
+</div>
+
+<div id="batchCollectPanel" style="display: none; padding: 20px;">
+    <div class="layui-form">
+        <div class="layui-form-item">
+            <label class="layui-form-label">选择数字员工</label>
+            <div class="layui-input-block">
+                <select name="batch_employee_id" id="batchEmployeeSelect" lay-search>
+                    <option value="">请选择采集专员</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label">选择数量</label>
+            <div class="layui-input-block">
+                <span class="layui-form-mid" id="selectedCount">已选择 0 条数据</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var $, layer, form, laypage;
+layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
+    laypage = lp;
+    layer = ly;
+    form = fm;
+    $ = jq;
+    
+    laypage.render({
+        elem: 'pagination',
+        count: {{ total }},
+        limit: 20,
+        curr: {{ page }},
+        layout: ['count', 'prev', 'page', 'next', 'skip'],
+        jump: function(obj, first){
+            if(!first){
+                var search = document.getElementById('searchInput').value;
+                window.location.href = '/admin/data_warehouse?page=' + obj.curr + '&search=' + encodeURIComponent(search);
+            }
+        }
+    });
+    
+    $('#selectAllIcon').on('click', function(){
+        var allChecked = $('input[name="dataItem"]').length === $('input[name="dataItem"]:checked').length;
+        $('input[name="dataItem"]').prop('checked', !allChecked);
+        $(this).removeClass('layui-icon-checkbox').addClass(allChecked ? 'layui-icon-checkbox' : 'layui-icon-checkbox-fill');
+        $(this).css('color', allChecked ? '#999' : '#165DFF');
+        updateSelectedCount();
+    });
+    
+    $('input[name="dataItem"]').on('change', function(){
+        var allChecked = $('input[name="dataItem"]').length === $('input[name="dataItem"]:checked').length;
+        $('#selectAllIcon').removeClass('layui-icon-checkbox-fill').removeClass('layui-icon-checkbox');
+        $('#selectAllIcon').addClass(allChecked ? 'layui-icon-checkbox-fill' : 'layui-icon-checkbox');
+        $('#selectAllIcon').css('color', allChecked ? '#165DFF' : '#999');
+        updateSelectedCount();
+    });
+    
+    function updateSelectedCount(){
+        var count = $('input[name="dataItem"]:checked').length;
+        $('#selectedCount').text('已选择 ' + count + ' 条数据');
+    }
+    
+    window.searchData = function() {
+        var search = document.getElementById('searchInput').value;
+        window.location.href = '/admin/data_warehouse?page=1&search=' + encodeURIComponent(search);
+    };
+    
+    window.viewData = function(id, title, content) {
+        layer.open({
+            type: 1,
+            title: title,
+            area: ['600px', '400px'],
+            content: '<div style="padding: 20px; line-height: 1.6; font-size: 14px; max-height: 350px; overflow-y: auto;">' + content + '</div>'
+        });
+    };
+    
+    window.deleteData = function(id) {
+        layer.confirm('确定要删除这条数据吗？', function(index){
+            fetch('/admin/data_warehouse', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    action: 'delete',
+                    id: id,
+                    _xsrf: getCookie('_xsrf')
+                })
+            }).then(res => res.json())
+            .then(data => {
+                if(data.code === 0) {
+                    layer.msg('删除成功', {icon: 1});
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    layer.msg(data.msg || '删除失败', {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    };
+    
+    var currentDeepCollectId = null;
+    var currentTaskId = null;
+    var pollingTimer = null;
+    
+    function loadEmployees(selectId) {
+        return fetch('/admin/data_warehouse', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                action: 'get_employees',
+                _xsrf: getCookie('_xsrf')
+            })
+        }).then(res => res.json())
+        .then(data => {
+            if(data.code === 0) {
+                var select = document.getElementById(selectId);
+                select.innerHTML = '<option value="">请选择采集专员</option>';
+                data.data.forEach(function(emp){
+                    var option = document.createElement('option');
+                    option.value = emp.id;
+                    option.textContent = emp.name;
+                    select.appendChild(option);
+                });
+                form.render('select');
+                return data.data;
+            } else {
+                layer.msg(data.msg || '加载数字员工失败', {icon: 2});
+                return [];
+            }
+        }).catch(function(err){
+            layer.msg('加载数字员工失败: ' + err, {icon: 2});
+            return [];
+        });
+    }
+    
+    window.openDeepCollectPanel = function(id) {
+        currentDeepCollectId = id;
+        currentTaskId = null;
+        
+        document.getElementById('taskStatusPanel').style.display = 'none';
+        document.getElementById('resultPanel').style.display = 'none';
+        
+        loadEmployees('employeeSelect').then(function(employees){
+            if(employees.length === 0){
+                layer.msg('没有可用的采集专员数字员工，请确认已创建并启用“网页抓取”功能的 LLM 员工', {icon: 2});
+            }
+        });
+        
+        fetch('/admin/data_warehouse', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                action: 'get_deep_task',
+                id: id,
+                _xsrf: getCookie('_xsrf')
+            })
+        }).then(res => res.json())
+        .then(data => {
+            if(data.code === 0) {
+                var task = data.data;
+                currentTaskId = task.id;
+                renderTaskStatus(task);
+                document.getElementById('taskStatusPanel').style.display = 'block';
+                
+                if(task.status === 'running') {
+                    startPolling();
+                }
+            }
+        });
+        
+        layer.open({
+            type: 1,
+            title: '深度采集任务',
+            area: ['700px', '600px'],
+            content: $('#deepCollectPanel'),
+            btn: ['开始采集', '关闭'],
+            success: function(layero, index){
+                form.render('select');
+            },
+            yes: function(index){
+                startDeepCollect(index);
+            },
+            end: function(){
+                stopPolling();
+            }
+        });
+    };
+    
+    function startDeepCollect(layerIndex) {
+        var employeeSelect = document.getElementById('employeeSelect');
+        var employeeId = employeeSelect.value;
+        var employeeName = employeeSelect.options[employeeSelect.selectedIndex].text;
+        
+        if(!employeeId) {
+            layer.msg('请选择采集专员数字员工', {icon: 2});
+            return;
+        }
+        
+        document.getElementById('taskStatusPanel').style.display = 'block';
+        document.getElementById('statusBadge').className = 'layui-badge layui-bg-blue';
+        document.getElementById('statusBadge').textContent = '启动中';
+        document.getElementById('progressText').textContent = '0%';
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('stepsList').innerHTML = '';
+        document.getElementById('logsContainer').innerHTML = '';
+        document.getElementById('resultPanel').style.display = 'none';
+        document.getElementById('employeeName').textContent = employeeName;
+        
+        fetch('/admin/data_warehouse', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                action: 'start_deep_collect',
+                id: currentDeepCollectId,
+                employee_id: employeeId,
+                employee_name: employeeName,
+                _xsrf: getCookie('_xsrf')
+            })
+        }).then(res => res.json())
+        .then(data => {
+            if(data.code === 0) {
+                currentTaskId = data.task_id;
+                layer.msg('深度采集任务已启动', {icon: 1});
+                startPolling();
+            } else {
+                layer.msg(data.msg || '启动失败', {icon: 2});
+                document.getElementById('statusBadge').className = 'layui-badge layui-bg-red';
+                document.getElementById('statusBadge').textContent = '启动失败';
+            }
+        });
+    }
+    
+    function startPolling() {
+        stopPolling();
+        pollingTimer = setInterval(function(){
+            if(currentTaskId) {
+                fetch('/admin/data_warehouse', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'get_deep_task',
+                        id: currentDeepCollectId,
+                        _xsrf: getCookie('_xsrf')
+                    })
+                }).then(res => res.json())
+                .then(data => {
+                    if(data.code === 0) {
+                        renderTaskStatus(data.data);
+                        if(data.data.status === 'completed' || data.data.status === 'failed') {
+                            stopPolling();
+                        }
+                    }
+                });
+            }
+        }, 2000);
+    }
+    
+    function stopPolling() {
+        if(pollingTimer) {
+            clearInterval(pollingTimer);
+            pollingTimer = null;
+        }
+    }
+    
+    function renderTaskStatus(task) {
+        var statusBadge = document.getElementById('statusBadge');
+        var statusConfig = {
+            'pending': {text: '等待中', class: 'layui-bg-gray'},
+            'running': {text: '采集中', class: 'layui-bg-blue'},
+            'completed': {text: '已完成', class: 'layui-bg-green'},
+            'failed': {text: '失败', class: 'layui-bg-red'}
+        };
+        
+        var config = statusConfig[task.status] || statusConfig['pending'];
+        statusBadge.className = 'layui-badge ' + config.class;
+        statusBadge.textContent = config.text;
+        
+        document.getElementById('progressText').textContent = task.progress + '%';
+        document.getElementById('progressBar').style.width = task.progress + '%';
+        
+        if(task.employee_name) {
+            document.getElementById('employeeName').textContent = '执行员工: ' + task.employee_name;
+        }
+        
+        if(task.steps) {
+            var steps = JSON.parse(task.steps);
+            var stepsHtml = '';
+            steps.forEach(function(step){
+                var stepClass = step.status === 'completed' ? 'layui-bg-green' : 
+                               step.status === 'failed' ? 'layui-bg-red' : 'layui-bg-blue';
+                stepsHtml += '<li style="margin-bottom: 5px;"><span class="layui-badge ' + stepClass + '" style="margin-right: 10px;">' + 
+                             (step.status === 'completed' ? '✓' : step.status === 'failed' ? '✗' : '●') + 
+                             '</span>' + step.name + '</li>';
+            });
+            document.getElementById('stepsList').innerHTML = stepsHtml;
+        }
+        
+        if(task.logs) {
+            var logs = JSON.parse(task.logs);
+            var logsHtml = '';
+            logs.forEach(function(log){
+                var logColor = log.level === 'error' ? 'color: #FF5722;' : 
+                               log.level === 'warning' ? 'color: #FA8C16;' : '';
+                logsHtml += '<div style="' + logColor + '">' + log.time + ' - ' + log.message + '</div>';
+            });
+            document.getElementById('logsContainer').innerHTML = logsHtml;
+            document.getElementById('logsContainer').scrollTop = document.getElementById('logsContainer').scrollHeight;
+        }
+        
+        if(task.result_data) {
+            var resultData = JSON.parse(task.result_data);
+            var resultHtml = '<div><strong>标题：</strong>' + resultData.title + '</div>' +
+                             '<div style="margin-top: 10px;"><strong>字数：</strong>' + resultData.word_count + ' 字</div>' +
+                             '<div style="margin-top: 10px;"><strong>内容预览：</strong></div>' +
+                             '<div style="margin-top: 5px; padding: 10px; background: white; border-radius: 4px; max-height: 200px; overflow-y: auto; font-size: 13px;">' + 
+                             (resultData.content || '无内容') + '</div>';
+            if(resultData.warning) {
+                resultHtml += '<div style="margin-top: 10px; padding: 10px; background: #fff7e6; border-radius: 4px; color: #FA8C16;">' + resultData.warning + '</div>';
+            }
+            document.getElementById('resultContent').innerHTML = resultHtml;
+            document.getElementById('resultPanel').style.display = 'block';
+        }
+    }
+    
+    window.openDeepDataViewer = function(id) {
+        fetch('/admin/data_warehouse', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                action: 'get_deep_task',
+                id: id,
+                _xsrf: getCookie('_xsrf')
+            })
+        }).then(res => res.json())
+        .then(data => {
+            if(data.code === 0) {
+                var task = data.data;
+                var content = '<div class="layui-form">';
+                content += '<div class="layui-form-item"><label class="layui-form-label">采集员工</label><div class="layui-input-block"><span class="layui-form-mid">' + (task.employee_name || '-') + '</span></div></div>';
+                content += '<div class="layui-form-item"><label class="layui-form-label">采集状态</label><div class="layui-input-block"><span class="layui-badge ' + 
+                           (task.status === 'completed' ? 'layui-bg-green' : task.status === 'failed' ? 'layui-bg-red' : 'layui-bg-blue') + '">' + 
+                           task.status + '</span></div></div>';
+                content += '<div class="layui-form-item"><label class="layui-form-label">采集时间</label><div class="layui-input-block"><span class="layui-form-mid">' + task.created_at + '</span></div></div>';
+                
+                if(task.result_data) {
+                    var resultData = JSON.parse(task.result_data);
+                    content += '<div class="layui-form-item"><label class="layui-form-label">标题</label><div class="layui-input-block"><span class="layui-form-mid">' + resultData.title + '</span></div></div>';
+                    content += '<div class="layui-form-item"><label class="layui-form-label">字数统计</label><div class="layui-input-block"><span class="layui-form-mid">' + resultData.word_count + ' 字</span></div></div>';
+                    content += '<div class="layui-form-item"><label class="layui-form-label">详细内容</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-size: 13px;">' + (resultData.content || '无内容') + '</pre></div></div>';
+                }
+                
+                content += '</div>';
+                document.getElementById('deepDataContent').innerHTML = content;
+                
+                layer.open({
+                    type: 1,
+                    title: '深度采集数据详情',
+                    area: ['600px', '500px'],
+                    content: $('#deepDataViewer'),
+                    btn: ['关闭']
+                });
+            } else {
+                layer.msg('暂无深度采集数据', {icon: 2});
+            }
+        });
+    };
+    
+    window.batchDeepCollect = function() {
+        var checkedItems = $('input[name="dataItem"]:checked');
+        if(checkedItems.length === 0) {
+            layer.msg('请先选择要采集的数据', {icon: 2});
+            return;
+        }
+        
+        loadEmployees('batchEmployeeSelect').then(function(employees){
+            if(employees.length === 0){
+                layer.msg('没有可用的采集专员数字员工，请确认已创建并启用“网页抓取”功能的 LLM 员工', {icon: 2});
+            }
+        });
+        updateSelectedCount();
+        
+        layer.open({
+            type: 1,
+            title: '批量深度采集',
+            area: ['500px', '250px'],
+            content: $('#batchCollectPanel'),
+            btn: ['开始批量采集', '关闭'],
+            success: function(layero, index){
+                form.render('select');
+            },
+            yes: function(index){
+                var employeeSelect = document.getElementById('batchEmployeeSelect');
+                var employeeId = employeeSelect.value;
+                var employeeName = employeeSelect.options[employeeSelect.selectedIndex].text;
+                
+                if(!employeeId) {
+                    layer.msg('请选择采集专员数字员工', {icon: 2});
+                    return;
+                }
+                
+                var ids = [];
+                checkedItems.each(function(){
+                    ids.push($(this).val());
+                });
+                
+                fetch('/admin/data_warehouse', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'batch_deep_collect',
+                        ids: JSON.stringify(ids),
+                        employee_id: employeeId,
+                        employee_name: employeeName,
+                        _xsrf: getCookie('_xsrf')
+                    })
+                }).then(res => res.json())
+                .then(data => {
+                    if(data.code === 0) {
+                        layer.close(index);
+                        layer.msg(data.msg, {icon: 1});
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        layer.msg(data.msg || '操作失败', {icon: 2});
+                    }
+                });
+            }
+        });
+    };
+});
+</script>
+{% end %}

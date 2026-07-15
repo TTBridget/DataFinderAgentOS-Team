@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block body %}
+
+<div style="padding: 24px;">
+  
+  <div class="layui-row layui-col-space20">
+    <div class="layui-col-md3">
+      <div class="layui-card">
+        <div class="layui-card-header" style="background: linear-gradient(135deg, #165DFF 0%, #0E3BA1 100%); color: white;">
+          <i class="layui-icon layui-icon-username" style="margin-right: 8px;"></i>系统信息
+        </div>
+        <div class="layui-card-body">
+          <p style="margin-bottom: 12px;"><strong>系统版本：</strong>1.0.0</p>
+          <p style="margin-bottom: 12px;"><strong>当前用户：</strong>{{ username }}</p>
+          <p style="margin-bottom: 12px;"><strong>登录时间：</strong>{{ login_time }}</p>
+          <p style="margin-bottom: 12px;"><strong>系统状态：</strong><span style="color: #52C41A;">运行正常</span></p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="layui-col-md3">
+      <div class="layui-card">
+        <div class="layui-card-header" style="background: linear-gradient(135deg, #52C41A 0%, #389E0D 100%); color: white;">
+          <i class="layui-icon layui-icon-chart-screen" style="margin-right: 8px;"></i>数据统计
+        </div>
+        <div class="layui-card-body">
+          <p style="margin-bottom: 12px;"><strong>用户总数：</strong><span style="color: #52C41A;">待开发</span></p>
+          <p style="margin-bottom: 12px;"><strong>数据采集任务：</strong><span style="color: #52C41A;">待开发</span></p>
+          <p style="margin-bottom: 12px;"><strong>数字员工数：</strong><span style="color: #52C41A;">待开发</span></p>
+          <p style="margin-bottom: 12px;"><strong>数据模型数：</strong><span style="color: #52C41A;">待开发</span></p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="layui-col-md3">
+      <div class="layui-card">
+        <div class="layui-card-header" style="background: linear-gradient(135deg, #FA8C16 0%, #D46B08 100%); color: white;">
+          <i class="layui-icon layui-icon-rmb" style="margin-right: 8px;"></i>运行监控
+        </div>
+        <div class="layui-card-body">
+          <p style="margin-bottom: 12px;"><strong>CPU使用率：</strong><span style="color: #FA8C16;">--</span></p>
+          <p style="margin-bottom: 12px;"><strong>内存使用率：</strong><span style="color: #FA8C16;">--</span></p>
+          <p style="margin-bottom: 12px;"><strong>磁盘使用率：</strong><span style="color: #FA8C16;">--</span></p>
+          <p style="margin-bottom: 12px;"><strong>网络状态：</strong><span style="color: #52C41A;">正常</span></p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="layui-col-md3">
+      <div class="layui-card">
+        <div class="layui-card-header" style="background: linear-gradient(135deg, #722ED1 0%, #531DAB 100%); color: white;">
+          <i class="layui-icon layui-icon-notice" style="margin-right: 8px;"></i>快捷操作
+        </div>
+        <div class="layui-card-body">
+          <button class="layui-btn layui-btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="layer.msg('功能开发中')">
+            <i class="layui-icon layui-icon-set" style="margin-right: 6px;"></i>系统配置
+          </button>
+          <button class="layui-btn layui-btn-normal" style="width: 100%; margin-bottom: 10px;" onclick="layer.msg('功能开发中')">
+            <i class="layui-icon layui-icon-upload" style="margin-right: 6px;"></i>数据备份
+          </button>
+          <button class="layui-btn layui-btn-warm" style="width: 100%;" onclick="layer.msg('功能开发中')">
+            <i class="layui-icon layui-icon-log" style="margin-right: 6px;"></i>查看日志
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="layui-card" style="margin-top: 20px;">
+    <div class="layui-card-header">
+      <i class="layui-icon layui-icon-app" style="margin-right: 8px; color: #165DFF;"></i>功能导航
+    </div>
+    <div class="layui-card-body">
+      <div class="layui-row layui-col-space15">
+        <div class="layui-col-md3">
+          <div class="layui-card" style="background: linear-gradient(135deg, #E6F7FF 0%, #BAE7FF 100%); cursor: pointer; border: 1px solid #91D5FF;" onclick="layer.msg('功能开发中')">
+            <div class="layui-card-body" style="text-align: center; padding: 30px;">
+              <i class="layui-icon layui-icon-username" style="font-size: 48px; color: #165DFF;"></i>
+              <p style="margin-top: 16px; color: #165DFF; font-weight: 500; font-size: 16px;">用户管理</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="layui-col-md3">
+          <div class="layui-card" style="background: linear-gradient(135deg, #F6FFED 0%, #D9F7BE 100%); cursor: pointer; border: 1px solid #B7EB8F;" onclick="layer.msg('功能开发中')">
+            <div class="layui-card-body" style="text-align: center; padding: 30px;">
+              <i class="layui-icon layui-icon-website" style="font-size: 48px; color: #52C41A;"></i>
+              <p style="margin-top: 16px; color: #52C41A; font-weight: 500; font-size: 16px;">瞭望中心</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="layui-col-md3">
+          <div class="layui-card" style="background: linear-gradient(135deg, #FFF7E6 0%, #FFE7BA 100%); cursor: pointer; border: 1px solid #FFD591;" onclick="layer.msg('功能开发中')">
+            <div class="layui-card-body" style="text-align: center; padding: 30px;">
+              <i class="layui-icon layui-icon-util" style="font-size: 48px; color: #FA8C16;"></i>
+              <p style="margin-top: 16px; color: #FA8C16; font-weight: 500; font-size: 16px;">数字员工</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="layui-col-md3">
+          <div class="layui-card" style="background: linear-gradient(135deg, #F9F0FF 0%, #EFDBFF 100%); cursor: pointer; border: 1px solid #D3ADF7;" onclick="layer.msg('功能开发中')">
+            <div class="layui-card-body" style="text-align: center; padding: 30px;">
+              <i class="layui-icon layui-icon-engine" style="font-size: 48px; color: #722ED1;"></i>
+              <p style="margin-top: 16px; color: #722ED1; font-weight: 500; font-size: 16px;">模型引擎</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+</div>
+
+{% end %}

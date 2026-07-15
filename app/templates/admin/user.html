@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="layui-body-content" style="padding: 20px;">
+    <div class="layui-card">
+        <div class="layui-card-header">用户管理</div>
+        <div class="layui-card-body">
+            <!-- 搜索和功能区 -->
+            <div class="layui-form-item" style="margin-bottom: 20px;">
+                <div class="layui-inline">
+                    <input type="text" id="searchInput" placeholder="请输入用户名" class="layui-input" style="width: 200px;">
+                </div>
+                <button class="layui-btn" onclick="searchUsers()"><i class="layui-icon layui-icon-search"></i>搜索</button>
+                <button class="layui-btn layui-btn-normal" onclick="openAddModal()"><i class="layui-icon layui-icon-add-1"></i>添加用户</button>
+            </div>
+            
+            <!-- 表格区 -->
+            <table class="layui-table" lay-skin="line">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>类型</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user['id'] }}</td>
+                        <td>{{ user['username'] }}</td>
+                        <td>{{ '管理员' if user['user_type'] == 'admin' else '普通用户' }}</td>
+                        <td>{{ user['role_name'] or '未分配' }}</td>
+                        <td>
+                            {% if user['is_disabled'] == 1 %}
+                            <span class="layui-badge layui-bg-gray">已禁用</span>
+                            {% else %}
+                            <span class="layui-badge layui-bg-green">正常</span>
+                            {% end %}
+                        </td>
+                        <td>{{ user['created_at'] }}</td>
+                        <td>
+                            {% if user['username'] == 'admin' %}
+                                <span class="layui-badge layui-bg-orange">超级管理员</span>
+                            {% else %}
+                                <button class="layui-btn layui-btn-xs" onclick="openEditModal({{ user['id'] }}, '{{ user['username'] }}', '{{ user['user_type'] }}', {{ user['role_id'] }})">编辑</button>
+                            {% end %}
+                            {% if user['username'] != 'admin' %}
+                                {% if user['is_disabled'] == 1 %}
+                                <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="toggleUser({{ user['id'] }}, '{{ user['user_type'] }}', 0)">启用</button>
+                                {% else %}
+                                <button class="layui-btn layui-btn-xs layui-btn-warm" onclick="toggleUser({{ user['id'] }}, '{{ user['user_type'] }}', 1)">禁用</button>
+                                {% end %}
+                                <button class="layui-btn layui-btn-xs layui-btn-danger" onclick="deleteUser({{ user['id'] }}, '{{ user['user_type'] }}')">删除</button>
+                            {% elif username == 'admin' %}
+                                <button class="layui-btn layui-btn-xs" onclick="openEditModal({{ user['id'] }}, '{{ user['username'] }}', '{{ user['user_type'] }}', {{ user['role_id'] }})">修改密码</button>
+                            {% end %}
+                        </td>
+                    </tr>
+                    {% end %}
+                </tbody>
+            </table>
+            
+            <!-- 分页区 -->
+            <div id="pagination"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑用户弹窗 -->
+<div id="userModal" style="display: none; padding: 20px;">
+    <form class="layui-form" lay-filter="userForm">
+        <input type="hidden" name="action" id="action" value="add">
+        <input type="hidden" name="id" id="userId">
+        <input type="hidden" name="user_type" id="userType">
+        <div class="layui-form-item">
+            <label class="layui-form-label">用户名</label>
+            <div class="layui-input-block">
+                <input type="text" name="username" id="username" required lay-verify="required" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">密码</label>
+            <div class="layui-input-block">
+                <input type="password" name="password" id="password" class="layui-input">
+                <div class="layui-form-mid layui-word-aux">编辑时留空则不修改密码</div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">类型</label>
+            <div class="layui-input-block">
+                <select name="user_type_select" id="userTypeSelect" lay-filter="userTypeSelect">
+                    <option value="user">普通用户</option>
+                    <option value="admin">管理员</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">角色</label>
+            <div class="layui-input-block">
+                <select name="role_id" id="roleId" lay-verify="required">
+                    {% for role in roles %}
+                    <option value="{{ role['id'] }}">{{ role['name'] }}</option>
+                    {% end %}
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
+    var layer = layui.layer;
+    var form = layui.form;
+    var laypage = layui.laypage;
+    var $ = layui.jquery;
+    
+    // 分页
+    laypage.render({
+        elem: 'pagination',
+        count: {{ total }},
+        limit: 20,
+        curr: {{ page }},
+        jump: function(obj, first){
+            if(!first){
+                window.location.href = '?page=' + obj.curr + '&search=' + $('#searchInput').val();
+            }
+        }
+    });
+    
+    // 监听类型选择
+    form.on('select(userTypeSelect)', function(data){
+        $('#userType').val(data.value);
+        // 更新角色选项
+        var roleSelect = $('#roleId');
+        roleSelect.empty();
+        {% for role in roles %}
+        roleSelect.append('<option value="{{ role['id'] }}">{{ role['name'] }}</option>');
+        {% end %}
+        form.render('select');
+    });
+    
+    // 暴露到全局的函数
+    window.searchUsers = function(){
+        var search = $('#searchInput').val();
+        window.location.href = '?search=' + search;
+    }
+    
+    window.openAddModal = function(){
+        var $ = layui.jquery;
+        $('#action').val('add');
+        $('#userId').val('');
+        $('#username').val('');
+        $('#password').val('');
+        $('#userType').val('user');
+        $('#userTypeSelect').val('user');
+        form.render('select');
+        
+        layer.open({
+            type: 1,
+            title: '添加用户',
+            content: $('#userModal'),
+            area: ['500px', '400px'],
+            btn: ['确定', '取消'],
+            yes: function(index){
+                submitUserForm(index);
+            }
+        });
+    }
+    
+    window.openEditModal = function(id, username, userType, roleId){
+        $('#action').val('edit');
+        $('#userId').val(id);
+        $('#username').val(username);
+        $('#password').val('');
+        $('#userType').val(userType);
+        $('#userTypeSelect').val(userType);
+        $('#roleId').val(roleId);
+        form.render('select');
+        
+        // 检查是否是编辑admin用户
+        var isAdminUser = (username === 'admin');
+        var isCurrentUserAdmin = ('{{ username }}' === 'admin');
+        
+        // 如果是编辑admin用户
+        if(isAdminUser) {
+            // 禁用用户名、类型、角色字段
+            $('#username').attr('disabled', true);
+            $('#userTypeSelect').attr('disabled', true);
+            $('#roleId').attr('disabled', true);
+            form.render('select');
+            
+            layer.open({
+                type: 1,
+                title: '修改超级管理员密码',
+                content: $('#userModal'),
+                area: ['500px', '300px'],
+                btn: ['确定', '取消'],
+                yes: function(index){
+                    // 只允许修改密码
+                    var password = $('#password').val();
+                    if(!password) {
+                        layer.msg('请输入新密码');
+                        return;
+                    }
+                    submitUserForm(index);
+                }
+            });
+        } else {
+            // 普通用户编辑，启用所有字段
+            $('#username').attr('disabled', false);
+            $('#userTypeSelect').attr('disabled', false);
+            $('#roleId').attr('disabled', false);
+            form.render('select');
+            
+            layer.open({
+                type: 1,
+                title: '编辑用户',
+                content: $('#userModal'),
+                area: ['500px', '400px'],
+                btn: ['确定', '取消'],
+                yes: function(index){
+                    submitUserForm(index);
+                }
+            });
+        }
+    }
+    
+    function submitUserForm(index){
+        // 处理禁用字段，临时启用，收集值，然后再禁用回去
+        var tempDisabledFields = [];
+        $('input, select').each(function(){
+            if($(this).attr('disabled')){
+                tempDisabledFields.push($(this));
+                $(this).removeAttr('disabled');
+            }
+        });
+        
+        var formData = {
+            action: $('#action').val(),
+            id: $('#userId').val(),
+            username: $('#username').val(),
+            password: $('#password').val(),
+            user_type: $('#userType').val(),
+            role_id: $('#roleId').val(),
+            _xsrf: getCookie('_xsrf')
+        };
+        
+        // 重新禁用临时启用的字段
+        tempDisabledFields.forEach(function(el){
+            el.attr('disabled', true);
+        });
+        
+        if(!formData.username){
+            layer.msg('请输入用户名');
+            return;
+        }
+        
+        if(formData.action === 'add' && !formData.password){
+            layer.msg('请输入密码');
+            return;
+        }
+        
+        $.post('/admin/user', formData, function(res){
+            if(res.code === 0){
+                layer.close(index);
+                layer.msg(res.msg, {icon: 1});
+                setTimeout(function(){ location.reload(); }, 1000);
+            } else {
+                layer.msg(res.msg, {icon: 2});
+            }
+        });
+    }
+    
+    window.toggleUser = function(id, userType, isDisabled){
+        layer.confirm('确定要' + (isDisabled ? '禁用' : '启用') + '该用户吗？', {icon: 3}, function(index){
+            $.post('/admin/user', {
+                action: 'toggle',
+                id: id,
+                user_type: userType,
+                is_disabled: isDisabled,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code === 0){
+                    layer.msg(res.msg, {icon: 1});
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    }
+    
+    window.deleteUser = function(id, userType){
+        layer.confirm('确定要删除该用户吗？', {icon: 3}, function(index){
+            $.post('/admin/user', {
+                action: 'delete',
+                id: id,
+                user_type: userType,
+                _xsrf: getCookie('_xsrf')
+            }, function(res){
+                if(res.code === 0){
+                    layer.msg(res.msg, {icon: 1});
+                    setTimeout(function(){ location.reload(); }, 1000);
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    }
+});
+</script>
+{% end %}

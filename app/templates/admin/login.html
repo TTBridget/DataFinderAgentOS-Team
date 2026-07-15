@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能瞭望与智能问数系统 - 登录</title>
+  
+  <!-- 引入Layui -->
+  <link rel="stylesheet" href="{{ static_url('dist/layui/css/layui.css') }}">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    .bg-blob-1 {
+      position: absolute;
+      top: -10%;
+      right: -10%;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: rgba(22, 93, 255, 0.1);
+      filter: blur(120px);
+    }
+    
+    .bg-blob-2 {
+      position: absolute;
+      bottom: -15%;
+      left: -5%;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: rgba(14, 59, 161, 0.1);
+      filter: blur(100px);
+    }
+    
+    .login-container {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .login-card {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      border-radius: 16px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+    
+    @media (min-width: 1024px) {
+      .login-card {
+        flex-direction: row;
+      }
+    }
+    
+    .login-left {
+      flex: 1;
+      padding: 60px 50px;
+      background: linear-gradient(135deg, #165DFF 0%, #0E3BA1 100%);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    
+    .login-right {
+      flex: 1;
+      padding: 60px 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .logo-icon i {
+      font-size: 24px;
+    }
+    
+    .system-title {
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 16px;
+    }
+    
+    .system-desc {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 16px;
+      line-height: 1.8;
+      margin-bottom: 32px;
+    }
+    
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .feature-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .feature-text {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+    }
+    
+    .login-form-wrapper {
+      width: 100%;
+      max-width: 360px;
+    }
+    
+    .form-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1D2129;
+      margin-bottom: 8px;
+    }
+    
+    .form-subtitle {
+      color: #86909C;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .form-item {
+      margin-bottom: 0 !important;
+    }
+    
+    .input-group {
+      position: relative;
+    }
+    
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #86909C;
+    }
+    
+    .input-field {
+      width: 100%;
+      height: 48px;
+      padding-left: 42px;
+      padding-right: 42px;
+      border: 1px solid #E5E6EB;
+      border-radius: 10px;
+      font-size: 14px;
+      color: #272E3B;
+      transition: all 0.2s;
+    }
+    
+    .input-field:focus {
+      border-color: #165DFF;
+      box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.1);
+      outline: none;
+    }
+    
+    .password-toggle {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #86909C;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    
+    .password-toggle:hover {
+      color: #272E3B;
+    }
+    
+    .form-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+    
+    .remember-me {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #4E5969;
+    }
+    
+    .forgot-password {
+      font-size: 14px;
+      color: #165DFF;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    
+    .forgot-password:hover {
+      color: #0E3BA1;
+    }
+    
+    .login-btn {
+      width: 100%;
+      height: 48px;
+      background: linear-gradient(135deg, #165DFF 0%, #0E3BA1 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(22, 93, 255, 0.3);
+    }
+    
+    .login-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(22, 93, 255, 0.4);
+    }
+    
+    .login-btn:active {
+      transform: translateY(0);
+    }
+    
+    .copyright {
+      margin-top: 32px;
+      text-align: center;
+      font-size: 13px;
+      color: #86909C;
+    }
+    
+    .login-decor {
+      margin-top: 40px;
+      display: none;
+    }
+    
+    @media (min-width: 1024px) {
+      .login-decor {
+        display: block;
+      }
+    }
+    
+    .login-decor img {
+      width: 100%;
+      border-radius: 10px;
+      opacity: 0.9;
+    }
+    
+    .error-message {
+      background: #FFF2F0;
+      border: 1px solid #FF7D71;
+      color: #F53F3F;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg-blob-1"></div>
+  <div class="bg-blob-2"></div>
+  
+  <div class="login-container">
+    <div class="login-card">
+      
+      <!-- 左侧 -->
+      <div class="login-left">
+        <div class="logo-section">
+          <div class="logo-icon">
+            <i class="layui-icon layui-icon-engine"></i>
+          </div>
+          <h1 class="system-title">智能瞭望与智能问数系统</h1>
+        </div>
+        
+        <p class="system-desc">
+          面向科技企业与政务行业的智能数据分析平台，提供全方位的数据洞察与智能问答服务，助力决策智能化升级。
+        </p>
+        
+        <div class="feature-list">
+          <div class="feature-item">
+            <div class="feature-icon">
+              <i class="layui-icon layui-icon-vercode"></i>
+            </div>
+            <span class="feature-text">企业级安全鉴权体系</span>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">
+              <i class="layui-icon layui-icon-chart-screen"></i>
+            </div>
+            <span class="feature-text">多维度数据智能分析</span>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">
+              <i class="layui-icon layui-icon-util"></i>
+            </div>
+            <span class="feature-text">自然语言智能问答交互</span>
+          </div>
+        </div>
+        
+        <div class="login-decor">
+          <div style="width: 100%; height: 200px; background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+            <i class="layui-icon layui-icon-chart" style="font-size: 80px; opacity: 0.3;"></i>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 右侧 -->
+      <div class="login-right">
+        <div class="login-form-wrapper">
+          <h2 class="form-title">账号登录</h2>
+          <p class="form-subtitle">请输入您的账号信息以访问系统</p>
+          
+          {% if error %}
+          <div class="error-message">
+            <i class="layui-icon layui-icon-close"></i>
+            {{ error }}
+          </div>
+          {% end %}
+          
+          <form class="login-form layui-form" method="post" action="/admin/login">
+            {% module xsrf_form_html() %}
+            
+            <div class="form-item">
+              <label class="layui-form-label" style="width: 100%; text-align: left; padding: 0 0 8px 0;">用户名</label>
+              <div class="input-group">
+                <i class="layui-icon layui-icon-username input-icon"></i>
+                <input type="text" name="username" class="input-field" placeholder="请输入用户名" required lay-verify="required">
+              </div>
+            </div>
+            
+            <div class="form-item">
+              <div class="form-options" style="margin-bottom: 8px;">
+                <label class="layui-form-label" style="width: auto; padding: 0;">密码</label>
+              </div>
+              <div class="input-group">
+                <i class="layui-icon layui-icon-password input-icon"></i>
+                <input type="password" id="password" name="password" class="input-field" placeholder="请输入密码" required lay-verify="required">
+                <span class="password-toggle" onclick="togglePassword()">
+                  <i class="layui-icon layui-icon-eye" id="passwordIcon"></i>
+                </span>
+              </div>
+            </div>
+            
+            <div class="form-options">
+              <label class="remember-me">
+                <input type="checkbox" name="remember" lay-skin="primary" title="记住登录状态">
+              </label>
+              <a href="javascript:void(0);" class="forgot-password">忘记密码？</a>
+            </div>
+            
+            <button type="submit" class="login-btn" lay-submit lay-filter="login">
+              <i class="layui-icon layui-icon-ok-circle" style="margin-right: 6px;"></i>
+              安全登录
+            </button>
+          </form>
+          
+          <p class="copyright">© 2025 智能瞭望与智能问数系统 版权所有</p>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+  
+  <script src="{{ static_url('dist/layui/layui.js') }}"></script>
+  <script>
+    layui.use(['form', 'layer'], function() {
+      var form = layui.form;
+      var layer = layui.layer;
+    });
+    
+    function togglePassword() {
+      var passwordInput = document.getElementById('password');
+      var passwordIcon = document.getElementById('passwordIcon');
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        passwordIcon.className = 'layui-icon layui-icon-eye-invisible';
+      } else {
+        passwordInput.type = 'password';
+        passwordIcon.className = 'layui-icon layui-icon-eye';
+      }
+    }
+  </script>
+</body>
+
+</html>

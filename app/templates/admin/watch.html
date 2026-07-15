@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+
+{% block body %}
+<style>
+/* 高级商务科技风格主题 */
+.biz-container {
+    padding: 24px;
+    background: #0f172a;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(22, 93, 255, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(14, 59, 161, 0.15) 0px, transparent 50%);
+    color: #e2e8f0;
+}
+
+.biz-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.biz-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    font-size: 16px;
+    font-weight: 600;
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.biz-card-body {
+    padding: 20px;
+}
+
+/* 按钮样式 */
+.btn-cyber {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 20px;
+    height: 38px;
+    line-height: 38px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-cyber:hover {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    color: white;
+}
+
+.btn-ghost-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    padding: 0 20px;
+    height: 38px;
+    line-height: 36px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-ghost-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* 输入框暗色主题 */
+.dark-input {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+    border-radius: 6px !important;
+}
+.dark-input:focus {
+    border-color: #3b82f6 !important;
+}
+
+/* 结果卡片 */
+.result-card {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(51, 65, 85, 0.6);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.result-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.4);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+.result-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+    padding: 16px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.result-body {
+    padding: 16px;
+    flex: 1;
+}
+.result-meta {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 12px;
+}
+.meta-tag {
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.meta-time {
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+}
+.result-content {
+    color: #cbd5e1;
+    line-height: 1.6;
+    font-size: 13px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.result-footer {
+    padding: 12px 16px;
+    border-top: 1px solid rgba(51, 65, 85, 0.4);
+    background: rgba(15, 23, 42, 0.2);
+}
+
+/* 分页暗色主题 */
+.layui-laypage a, .layui-laypage span {
+    background-color: rgba(30, 41, 59, 0.6) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+}
+.layui-laypage .layui-laypage-curr .layui-laypage-em {
+    background-color: #2563eb !important;
+}
+.layui-laypage input, .layui-laypage button {
+    background-color: rgba(30, 41, 59, 0.6) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+/* Checkbox 暗色主题 */
+.layui-form-checkbox[lay-skin=primary] span {
+    color: #cbd5e1;
+}
+.layui-form-checkbox[lay-skin=primary]:hover i {
+    border-color: #3b82f6;
+}
+.layui-form-checked[lay-skin=primary] i {
+    border-color: #3b82f6 !important;
+    background-color: #2563eb !important;
+}
+</style>
+
+<div class="biz-container">
+    <!-- A区: 搜索区 -->
+    <div class="biz-card">
+        <div class="biz-card-header">
+            <i class="layui-icon layui-icon-search" style="color: #3b82f6;"></i> 瞭望采集中心
+        </div>
+        <div class="biz-card-body">
+            <form class="layui-form">
+                <div class="layui-form-item" style="margin-bottom: 0;">
+                    <div class="layui-input-inline" style="width: 400px; margin-right: 16px;">
+                        <input type="text" name="keyword" id="keyword" placeholder="请输入要采集的关键词..." class="layui-input dark-input">
+                    </div>
+                    <button class="btn-cyber" type="button" onclick="startCollect()">
+                        <i class="layui-icon layui-icon-download-circle"></i> 开始智能采集
+                    </button>
+                    <button class="btn-ghost-danger" type="button" onclick="clearData()" style="margin-left: 10px;">
+                        <i class="layui-icon layui-icon-delete"></i> 清空历史数据
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- B区: 瞭源列表 -->
+    <div class="biz-card">
+        <div class="biz-card-header">
+            <i class="layui-icon layui-icon-app" style="color: #10b981;"></i> 采集源矩阵
+        </div>
+        <div class="biz-card-body">
+            <form class="layui-form">
+                <div id="sourceList" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    {% for source in data_sources %}
+                    <input type="checkbox" name="source" value="{{ source['id'] }}" lay-skin="primary" title="{{ source['name'] }}" checked>
+                    {% end %}
+                    {% if not data_sources %}
+                    <span style="color: #64748b;">暂无可用瞭源，请先前往瞭源管理配置。</span>
+                    {% end %}
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- C区: 采集结果区 -->
+    <div class="biz-card">
+        <div class="biz-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div><i class="layui-icon layui-icon-table" style="color: #8b5cf6;"></i> 采集结果展示</div>
+            <div>
+                <form class="layui-form" style="display: inline-block; margin-right: 10px;">
+                    <input type="checkbox" id="selectAllData" lay-filter="selectAllData" lay-skin="primary" title="全选当前页">
+                </form>
+                <button class="layui-btn layui-btn-sm layui-bg-blue" onclick="saveSelectedToDataWarehouse()"><i class="layui-icon layui-icon-upload"></i> 保存到数据仓库</button>
+            </div>
+        </div>
+        <div class="biz-card-body">
+            <div class="layui-row layui-col-space20" id="resultContainer">
+                <form class="layui-form" id="dataListForm">
+                {% for item in collected_data %}
+                <div class="layui-col-md4">
+                    <div class="result-card">
+                        <div class="result-title" title="{{ item['title'] }}">
+                            <input type="checkbox" name="dataItem" lay-skin="primary" class="data-checkbox" 
+                                data-source-id="{{ item['source_id'] }}"
+                                data-title="{{ escape(item['title']) }}"
+                                data-url="{{ item['url'] }}"
+                                data-content="{{ escape(item['content']) }}"
+                                data-publish-time="{{ item['publish_time'] }}"
+                                data-source-name="{{ item['source_name'] }}"
+                                data-keyword="{{ item['keyword'] }}">
+                            {{ item['title'] }}
+                        </div>
+                        <div class="result-body">
+                            <div class="result-meta">
+                                <span class="meta-tag">{{ item['source_name'] }}</span>
+                                <span class="meta-time"><i class="layui-icon layui-icon-time" style="margin-right: 4px; font-size: 12px;"></i>{{ item['publish_time'] }}</span>
+                            </div>
+                            <div class="result-content">
+                                {{ item['content'] }}
+                            </div>
+                        </div>
+                        <div class="result-footer">
+                            {% if item['url'] %}
+                            <a href="{{ item['url'] }}" target="_blank" class="layui-btn layui-btn-xs layui-btn-normal layui-bg-blue" style="border-radius: 4px;">阅读原文 <i class="layui-icon layui-icon-right"></i></a>
+                            {% end %}
+                        </div>
+                    </div>
+                </div>
+                {% end %}
+                </form>
+            </div>
+            
+            {% if not collected_data %}
+            <div style="text-align: center; padding: 60px 0; color: #64748b;">
+                <i class="layui-icon layui-icon-inbox" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                暂无数据，请在上方输入关键词开始采集
+            </div>
+            {% end %}
+            
+            <!-- 分页区 -->
+            <div id="pagination" style="margin-top: 30px; text-align: right;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
+	var layer = layui.layer;
+	var form = layui.form;
+	var laypage = layui.laypage;
+	var $ = layui.jquery;
+	
+	// 自定义暗色主题的 layer
+	layer.config({
+		skin: 'layui-layer-molv'
+	});
+	
+	// 分页
+	laypage.render({
+		elem: 'pagination',
+		count: {{ total }},
+		limit: 12,
+		curr: {{ page }},
+		theme: '#2563eb',
+		jump: function(obj, first){
+			if(!first){
+				window.location.href = '?page=' + obj.curr;
+			}
+		}
+	});
+	
+	// 全选/取消全选
+	form.on('checkbox(selectAllData)', function(data){
+		$('#dataListForm input[name="dataItem"]').each(function(){
+			this.checked = data.elem.checked;
+		});
+		form.render('checkbox');
+	});
+});
+
+function saveSelectedToDataWarehouse() {
+	var $ = layui.jquery;
+	var selectedData = [];
+	
+	$('#dataListForm input[name="dataItem"]:checked').each(function(){
+		selectedData.push({
+			source_id: $(this).data('source-id'),
+			title: $(this).data('title'),
+			url: $(this).data('url'),
+			content: $(this).data('content'),
+			publish_time: $(this).data('publish-time'),
+			source_name: $(this).data('source-name'),
+			keyword: $(this).data('keyword')
+		});
+	});
+	
+	if (selectedData.length === 0) {
+		layui.layer.msg('请至少选择一条数据', {icon: 2});
+		return;
+	}
+	
+	var loading = layui.layer.load(1, {shade: [0.1,'#fff']});
+	
+	$.post('/admin/data_warehouse', {
+		action: 'save_selected',
+		data: JSON.stringify(selectedData),
+		_xsrf: getCookie('_xsrf')
+	}, function(res) {
+		layui.layer.close(loading);
+		if(res.code === 0){
+			layui.layer.msg(res.msg, {icon: 1});
+		} else {
+			layui.layer.msg(res.msg, {icon: 2});
+		}
+	});
+}
+
+function getSelectedSourceIds() {
+	var $ = layui.jquery;
+	var ids = [];
+	$('#sourceList input[type="checkbox"]:checked').each(function() {
+		ids.push($(this).val());
+	});
+	return ids;
+}
+
+function startCollect() {
+	var $ = layui.jquery;
+	var keyword = $('#keyword').val();
+	var sourceIds = getSelectedSourceIds();
+	
+	if (!keyword) {
+		layui.layer.msg('请输入关键词', {icon: 2});
+		return;
+	}
+	
+	if (sourceIds.length === 0) {
+		layui.layer.msg('请至少选择一个瞭源', {icon: 2});
+		return;
+	}
+	
+	var loading = layui.layer.load(1, {
+		shade: [0.1,'#fff']
+	});
+	
+	$.post('/admin/watch', {
+		action: 'collect',
+		keyword: keyword,
+		source_ids: sourceIds.join(','),
+		page: 0,
+		_xsrf: getCookie('_xsrf')
+	}, function(res) {
+		layui.layer.close(loading);
+		if(res.code === 0){
+			layui.layer.msg(res.msg, {icon: 1});
+			setTimeout(function(){ location.reload(); }, 1000);
+		} else {
+			layui.layer.msg(res.msg, {icon: 2});
+		}
+	});
+}
+
+function clearData() {
+	layui.layer.confirm('确定要清空所有采集数据吗？', {icon: 3}, function(index){
+		var $ = layui.jquery;
+		$.post('/admin/watch', {
+			action: 'clear',
+			_xsrf: getCookie('_xsrf')
+		}, function(res) {
+			if(res.code === 0){
+				layui.layer.close(index);
+				layui.layer.msg(res.msg, {icon: 1});
+				setTimeout(function(){ location.reload(); }, 1000);
+			} else {
+				layui.layer.msg(res.msg, {icon: 2});
+			}
+		});
+		layui.layer.close(index);
+	});
+}
+</script>
+{% end %}
