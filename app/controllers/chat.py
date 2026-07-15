@@ -64,13 +64,41 @@ def _translate_weather_desc(desc):
 		"Thunderstorm": "雷阵雨",
 		"Thunder": "雷",
 		"Fog": "雾",
-		"Mist": "雾",
+		"Mist": "薄雾",
 		"Haze": "霾",
+		"Smoky haze": "雾霾",
+		"Smoke": "烟雾",
 		"Dust": "扬尘",
+		"Sand": "沙尘",
+		"Dusty": "扬尘",
 		"Blizzard": "暴风雪",
-		"Drizzle": "毛毛雨"
+		"Drizzle": "毛毛雨",
+		"Freezing drizzle": "冻毛毛雨",
+		"Freezing fog": "冻雾",
+		"Ice pellets": "冰粒",
+		"Light drizzle": "小毛毛雨",
+		"Heavy drizzle": "大毛毛雨",
+		"Light showers": "小阵雨",
+		"Heavy showers": "大阵雨",
+		"Light thunderstorm": "小雷阵雨",
+		"Heavy thunderstorm": "大雷阵雨",
+		"Patchy rain possible": "可能有零星小雨",
+		"Patchy snow possible": "可能有零星小雪",
+		"Patchy light rain": "零星小雨",
+		"Patchy light snow": "零星小雪",
+		"Thundery outbreaks possible": "可能有雷暴",
+		"Blowing snow": "吹雪",
+		"Windy": "大风",
+		"Clear ": "晴",
 	}
-	return mapping.get(desc.strip(), desc)
+	result = mapping.get(desc.strip(), desc)
+	# 如果仍然包含英文字母，说明没有匹配到翻译，尝试模糊匹配
+	if result == desc and any(c.isalpha() for c in result):
+		desc_lower = desc.lower()
+		for en, zh in mapping.items():
+			if en.lower() in desc_lower:
+				return zh
+	return result
 
 
 def _estimate_tokens(text):
@@ -83,24 +111,38 @@ def _estimate_tokens(text):
 	return max(1, cn_chars + other_chars // 4)
 
 
-def _parse_weather_card(response_text):
+def _parse_weather_card(response_text, user_query=""):
 	"""解析 wttr.in JSON 响应为天气卡片数据"""
 	try:
 		data = json.loads(response_text)
 		current = data.get("current_condition", [{}])[0]
-		area = data.get("nearest_area", [{}])[0]
-		area_name = area.get("areaName", [{}])[0].get("value", "")
-		country = area.get("country", [{}])[0].get("value", "")
-		city = area_name or "未知城市"
-		if country:
-			city += f" ({country})"
-		
-		desc_en = current.get("weatherDesc", [{}])[0].get("value", "")
+
+		# 优先使用用户输入的城市名（中文），其次尝试 API 返回的中文区域名
+		city = user_query.strip() if user_query.strip() else ""
+		if not city:
+			area = data.get("nearest_area", [{}])[0]
+			# 尝试中文区域名
+			area_zh = area.get("areaName", [{}])
+			if area_zh and isinstance(area_zh, list) and area_zh[0].get("value"):
+				city = area_zh[0]["value"]
+			else:
+				city = "未知城市"
+
+		# 优先读取中文天气描述（lang=zh 时 wttr.in 返回 lang_zh 字段）
+		desc_zh = ""
+		lang_zh = current.get("lang_zh", [])
+		if lang_zh and isinstance(lang_zh, list) and lang_zh[0].get("value"):
+			desc_zh = lang_zh[0]["value"]
+
+		# 如果没有中文描述，尝试翻译英文描述
+		desc_en = current.get("weatherDesc", [{}])[0].get("value", "") if current.get("weatherDesc") else ""
+		description = desc_zh if desc_zh else _translate_weather_desc(desc_en)
+
 		return {
 			"city": city,
 			"temperature": current.get("temp_C", "--"),
 			"feels_like": current.get("FeelsLikeC", "--"),
-			"description": _translate_weather_desc(desc_en),
+			"description": description,
 			"description_en": desc_en,
 			"humidity": current.get("humidity", "--"),
 			"wind_speed": current.get("windspeedKmph", "--"),
@@ -142,24 +184,45 @@ def _get_random_music():
 
 
 def _parse_news_card(response_text):
-	"""解析热点新闻 API 响应为新闻卡片数据"""
+	"""解析热点新闻 API 响应为新闻卡片数据，兼容多种格式"""
 	try:
 		data = json.loads(response_text)
-		# 适配 vvhan API 返回结构：{"success": true, "data": [{"title": "...", "url": "..."}]}
 		items = []
-		if isinstance(data, dict) and isinstance(data.get("data"), list):
-			raw_items = data["data"]
+
+		# 格式1：vvhan API — {"data": [{"title": "...", "url": "..."}]}
+		# 格式2：60s API — {"data": {"news": ["新闻1", "新闻2", ...], "link": "..."}}
+		# 格式3：直接列表 — [{"title": "...", "url": "..."}]
+		if isinstance(data, dict):
+			inner = data.get("data")
+			if isinstance(inner, dict):
+				# 60s API 格式
+				news_list = inner.get("news", [])
+				news_link = inner.get("link", "#")
+				for item in news_list[:10]:
+					if isinstance(item, str):
+						items.append({"title": item, "url": news_link if news_link else "#"})
+					elif isinstance(item, dict):
+						title = item.get("title") or item.get("desc") or "无标题"
+						url = item.get("url") or item.get("link") or news_link or "#"
+						items.append({"title": str(title), "url": str(url)})
+			elif isinstance(inner, list):
+				# vvhan API 格式
+				for item in inner[:10]:
+					if isinstance(item, dict):
+						title = item.get("title") or item.get("desc") or item.get("name") or "无标题"
+						url = item.get("url") or item.get("link") or item.get("href") or "#"
+						items.append({"title": str(title), "url": str(url)})
+					elif isinstance(item, str):
+						items.append({"title": item, "url": "#"})
 		elif isinstance(data, list):
-			raw_items = data
-		else:
-			raw_items = []
-		
-		for item in raw_items[:10]:
-			if isinstance(item, dict):
-				title = item.get("title") or item.get("desc") or "无标题"
-				url = item.get("url") or item.get("link") or "#"
-				items.append({"title": str(title), "url": str(url)})
-		
+			for item in data[:10]:
+				if isinstance(item, dict):
+					title = item.get("title") or item.get("desc") or "无标题"
+					url = item.get("url") or item.get("link") or "#"
+					items.append({"title": str(title), "url": str(url)})
+				elif isinstance(item, str):
+					items.append({"title": item, "url": "#"})
+
 		return {
 			"time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
 			"items": items
@@ -676,17 +739,34 @@ class ChatHandler(BaseHandler):
 			
 			if emp_name == "新闻":
 				try:
-					if not validate_employee_api_url(api_url):
-						raise ValueError("新闻 API URL 不合法")
-					
+					card_data = None
 					client = AsyncHTTPClient()
-					request = HTTPRequest(url=api_url, method="GET", request_timeout=15, follow_redirects=False)
-					response = await client.fetch(request)
-					response_text = response.body.decode("utf-8", errors="replace")
-					card_data = _parse_news_card(response_text)
+
+					# 主 API：vvhan 热榜
+					if validate_employee_api_url(api_url):
+						try:
+							request = HTTPRequest(url=api_url, method="GET", headers={"User-Agent": "Mozilla/5.0"}, request_timeout=10, follow_redirects=True)
+							response = await client.fetch(request)
+							response_text = response.body.decode("utf-8", errors="replace")
+							card_data = _parse_news_card(response_text)
+						except Exception:
+							card_data = None
+
+					# 备用 API：60s 读懂世界
+					if not card_data or not card_data.get("items"):
+						try:
+							backup_url = "https://60s.viki.moe/v2/60s"
+							request2 = HTTPRequest(url=backup_url, method="GET", headers={"User-Agent": "Mozilla/5.0"}, request_timeout=10, follow_redirects=True)
+							response2 = await client.fetch(request2)
+							response_text2 = response2.body.decode("utf-8", errors="replace")
+							card_data = _parse_news_card(response_text2)
+						except Exception:
+							pass
+
+					# 最终兜底
 					if not card_data or not card_data.get("items"):
 						card_data = _fallback_news_card()
-					
+
 					display_text = f"当前全国热点新闻（共 {len(card_data.get('items', []))} 条）"
 					self.write("data: " + json.dumps({"content": display_text}) + "\n\n")
 					self.flush()
@@ -843,9 +923,9 @@ class ChatHandler(BaseHandler):
 				
 				# 根据卡片类型解析数据并生成展示文本
 				if card_type == "weather":
-					card_data = _parse_weather_card(response_text)
+					card_data = _parse_weather_card(response_text, message)
 					if card_data:
-						display_text = f"{card_data['city']}: {card_data['description']} {card_data['temperature']}°C，湿度{card_data['humidity']}%，风速{card_data['wind_speed']}km/h"
+						display_text = f"{card_data['city']}：{card_data['description']}，气温{card_data['temperature']}°C，湿度{card_data['humidity']}%，风速{card_data['wind_speed']}km/h"
 				elif card_type in ("json", "table"):
 					try:
 						card_data = json.loads(response_text)

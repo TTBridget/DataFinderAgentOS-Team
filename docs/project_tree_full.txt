@@ -70,6 +70,7 @@ DataFinderAgentOS
     │   │       ├── data_warehouse.html # 数据仓库页
     │   │       ├── digital_employee.html # 数字员工管理页
     │   │       ├── dashboard.html       # 数智大屏页
+    │   │       ├── chat_message.html    # 对话管理页（对话+会话双Tab）
     │   │
     │   └── __init__.py
     │

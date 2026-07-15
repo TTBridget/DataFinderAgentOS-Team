@@ -359,3 +359,27 @@ Cache-Control: no-cache
 3、功能导航8个入口均链接到实际路由：用户管理、瞭望中心、数字员工、模型引擎、瞭源管理、数据仓库、对话管理、数智大屏。
 4、控制器AdminIndexHandler已更新，查询真实统计数据传递给模板。
 5、修改文件：app/controllers/admin.py(AdminIndexHandler)、app/templates/admin/index.html(完全重写)。
+
+
+任务9.3 完成记录：
+1、百度百科瞭望源已添加：db.py 默认数据源 + collected_data.py _parse_baike 解析逻辑 + URL 构建（不需分页）+ 分发。
+2、模型管理按钮修复：ai_model.html 中 {{ json_encode() }} 被 Tornado autoescape 转义为 &quot; 导致 JS 语法错误，改用 {% raw json_encode() %} 修复。
+3、LLM 白名单已添加 aigc-api.aitoolcore.com 和 apihub.agnes-ai.com。
+
+任务10 完成记录：
+1、双 Tab 统一页面 chat_message.html：对话管理 + 会话管理 Tab 切换，AJAX 加载，每页10条。
+2、ChatMessageManageHandler 统一页面控制器，支持 conversations/sessions/session_messages 三个 AJAX API。
+3、ChatSessionManageHandler 改为重定向到 /admin/chat_message?tab=session。
+4、ChatSessionRepository.get_all_sessions 添加 message_count 子查询。
+
+任务10.1 完成记录：
+1、删除左侧菜单重复的会话管理项，保留对话管理。
+2、对话管理角色列宽度增至80px + white-space:nowrap 防止换行。
+
+任务10.2 完成记录：
+1、模型对话加载效果：思考中... 文字替换为蓝色圆点弹跳动画（三个圆点交错跳动）。
+2、数智大屏数据源分布：饼图中心从42%上移到38%，半径缩小，图例bottom调到0并添加itemWidth/itemHeight/itemGap使图例紧凑，解决图例盖住饼图问题。
+
+任务10.4 完成记录：
+1、天气卡片中文化：_parse_weather_card 新增 user_query 参数使用用户输入的中文城市名；优先读取 lang_zh 字段获取中文天气描述；_translate_weather_desc 新增 Smoky haze雾霾 等20+翻译词条并添加模糊匹配兜底。
+2、新闻API修复：vvhan API SSL错误不可用，添加备用API 60s.viki.moe/v2/60s（60s读懂世界）；follow_redirects改为True；_parse_news_card完全重写兼容三种格式（vvhan列表、60s嵌套字典、纯数组）。

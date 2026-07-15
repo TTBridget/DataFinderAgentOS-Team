@@ -118,6 +118,33 @@ DataFinderAgentOS 是一款政务智能瞭望与智能问数系统，基于 Torn
     - **模板层**：`app/templates/admin/dashboard.html`（独立页面，不继承 base.html）
     - **路由配置**：`/admin/dashboard`、`/admin/dashboard/data?action=xxx`
 
+11. **任务9.3：百度百科瞭望源 + 模型管理按钮修复（v0.1 新增）**
+    - **百度百科数据源**：在 db.py 默认数据源中添加"百度百科"（`https://baike.baidu.com`，路径模板 `/item/{keyword}`）
+    - **百科解析逻辑**：collected_data.py 新增 `_parse_baike` 方法，解析词条标题、摘要、基本信息（info_box），组合为完整内容
+    - **URL 构建**：百度百科不需要分页，直接使用 `{keyword}` 占位符
+    - **模型管理按钮修复**：ai_model.html 中所有 `{{ json_encode(...) }}` 改为 `{% raw json_encode(...) %}` 避免 Tornado autoescape 将 JSON 双引号转义为 `&quot;` 导致 JS 语法错误
+    - **修改文件**：app/models/db.py、app/models/collected_data.py、app/templates/admin/ai_model.html
+
+12. **任务10：对话管理与会话管理（v0.1 新增）**
+    - **双 Tab 统一页面**：对话管理和会话管理合并为一个页面，上方 Tab 切换，默认选中"对话管理"
+    - **对话管理 Tab**：展示所有对话记录，表格列包括对话ID、角色、内容预览(20字)、会话ID、用户、创建时间、操作（查看详情/删除），每页10条
+    - **会话管理 Tab**：展示所有会话记录，表格列包括会话ID、标题、创建用户、对话条数、创建时间、操作（查看对话列表/删除），每页10条
+    - **AJAX 加载**：Tab 切换无需刷新页面，通过 AJAX 请求 `/admin/chat_message?action=conversations/sessions/session_messages`
+    - **删除确认**：所有删除操作弹窗确认后执行
+    - **控制器**：ChatMessageManageHandler（统一页面 + AJAX API）、ChatSessionManageHandler（重定向到对话管理?tab=session）
+    - **模板层**：`app/templates/admin/chat_message.html`
+    - **模型层**：ChatSessionRepository.get_all_sessions 添加 message_count 子查询
+
+13. **任务10.1-10.4：后台主页优化与前台功能修复（v0.1 新增）**
+    - **后台主页真实统计**（10.3）：AdminIndexHandler 查询真实数据（users+admins、data_warehouse、digital_employees、ai_models），4个渐变色统计卡片展示
+    - **快捷操作**（10.3）：数智大屏、数据仓库、对话管理三个快捷入口，链接到实际路由
+    - **功能导航**（10.3）：8个功能入口（用户管理、瞭望中心、数字员工、模型引擎、瞭源管理、数据仓库、对话管理、数智大屏），全部链接到实际路由
+    - **对话管理UI修复**（10.1）：角色列宽度增至80px并添加 `white-space:nowrap` 防止换行；删除左侧菜单重复的"会话管理"项
+    - **模型对话加载效果**（10.2）：将"思考中..."文字替换为蓝色圆点弹跳动画
+    - **数智大屏图例修复**（10.2）：饼图中心上移、半径缩小、图例位置调整，解决图例盖住饼图问题
+    - **天气卡片中文化**（10.4）：`_parse_weather_card` 使用用户输入的中文城市名替代 API 返回的英文名；优先读取 `lang_zh` 字段；`_translate_weather_desc` 新增 20+ 翻译词条并添加模糊匹配
+    - **新闻API修复**（10.4）：vvhan API SSL 错误，添加备用 API（`60s.viki.moe/v2/60s`）；`follow_redirects=True`；`_parse_news_card` 兼容三种格式（vvhan列表、60s嵌套字典、纯数组）
+
 ## 需求跟踪
 
 ### 用户侧-前台功能需求
@@ -133,7 +160,7 @@ DataFinderAgentOS 是一款政务智能瞭望与智能问数系统，基于 Torn
 | 数字员工 | 员工调度 | 已完成 | 高 | 输入 `@` 可调出后台启用的数字员工，支持任意已配置员工（如 @采集专员） |
 | 数字员工 | @天气 | 已完成 | 中 | 默认配置 API 类型"天气"员工，调用 wttr.in 查询天气，前端输入 @天气 城市名 即可调用，渲染中文天气卡片 |
 | 数字员工 | @随机音乐 | 已完成 | 中 | 默认 API 类型"随机音乐"员工，返回红色系音乐卡片，支持在线播放/暂停/换一首 |
-| 数字员工 | @新闻 | 已完成 | 中 | 默认 API 类型"新闻"员工，调用 vvhan 热点新闻接口返回 10 条全国热点新闻，浅色卡片展示 |
+| 数字员工 | @新闻 | 已完成 | 中 | 默认 API 类型"新闻"员工，调用热点新闻接口返回 10 条全国热点新闻，浅色卡片展示。主 API 为 vvhan，备用 API 为 60s读懂世界（60s.viki.moe） |
 | 数字员工 | @文案写作助手 | 已完成 | 中 | 默认 LLM 类型"文案写作助手"员工，引入 temp/WriteToolsAgent/Docs 提示文件，严格按角色/约束/场景/模板流程交互写作 |
 | 数字员工 | @小智 | 已完成 | 中 | 默认 LLM 类型"小智"员工，支持通用 AI 聊天对话 |
 | 数字员工 | @采集专员 | 已完成 | 中 | 默认 LLM 类型"采集专员"员工，支持 @采集专员 进行深度采集任务，可生成表格/报表呈现 |
@@ -161,6 +188,8 @@ DataFinderAgentOS 是一款政务智能瞭望与智能问数系统，基于 Torn
 | 数字员工 | 已完成 | 高 | 支持两种员工类型（LLM 和 API），完整的管理功能及预留扩展 |
 | 模型引擎 | 已完成 | 高 | AI 模型引擎的管理和配置，支持OpenAI API范式、SSE流式对话测试 |
 | 数智大屏 | 已完成 | 高 | 采集数据及系统运营的数据化呈现，包含3D地球、词云、采集趋势预测、数据源分布、仓库状态、数字员工统计等可视化图表 |
+| 对话管理 | 已完成 | 高 | 双Tab统一页面（对话管理+会话管理），AJAX加载，支持查看详情/删除，每页10条 |
+| 后台主页 | 已完成 | 高 | 真实统计数据（用户/仓库/员工/模型）、快捷操作入口、功能导航8个入口 |
 
 ## 瞭望管理系统说明
 
@@ -173,7 +202,7 @@ DataFinderAgentOS 是一款政务智能瞭望与智能问数系统，基于 Torn
 
 2. **瞭源管理（/admin/data_source）
    - 管理采集源，包含名称、描述、Base URL、路径模板、Headers（JSON）、状态、排序
-   - 默认预置百度新闻数据源
+   - 默认预置百度新闻、百度搜索、微博热搜、微博搜索、百度百科数据源
    - 路径模板支持 {keyword}（关键词）、{page}（分页步长）占位符
    - Headers 配置模拟真实浏览器请求
 
@@ -419,3 +448,9 @@ DataFinderAgentOS 安全修复自动化验证
 - 2026-07-15: 修复前后台移动端侧边栏细节问题：前台 `.sidebar.collapsed` 在移动端保持 `position: fixed` 避免占位；后台 `layui-side` 从 `top: 64px` 开始并支持滚动，完整显示系统管理/瞭望中心/智能应用三个栏目
 - 2026-07-15: 完成用户侧前台系统模块开发：补齐 @随机音乐、@新闻、@文案写作助手、@小智 四个默认数字员工；将 `temp/WriteToolsAgent/Docs` 中的 role/constraint/scene/template 按顺序补充到"文案写作助手"的 System Prompt；实现 AI 对话导出 PDF、历史记录置顶/重命名、消息暂停生成与编辑重发功能；完善 `chat_sessions`（增加 `is_pinned`）与 `chat_messages`（增加 `is_edited`、`response_time`、`token_count`）表结构
 - 2026-07-15: 更新 `app/templates/index.html`：新增音乐/新闻卡片渲染、右上角导出按钮、会话置顶/重命名/删除交互、消息编辑按钮、暂停生成按钮；优化移动端侧边栏折叠逻辑
+- 2026-07-16: 完成任务 9.3：添加百度百科瞭望源（db.py 默认数据源 + collected_data.py 解析逻辑 + URL 构建 + 分发）；修复模型管理界面按钮失效问题（ai_model.html 中 `{{ json_encode() }}` 被 autoescape 转义导致 JS 语法错误，改用 `{% raw json_encode() %}`）
+- 2026-07-16: 完成任务 10 对话管理与会话管理：双 Tab 统一页面（chat_message.html），AJAX 加载对话/会话列表，支持查看详情/删除，每页10条；ChatMessageManageHandler 提供统一页面 + AJAX API；删除左侧菜单重复的"会话管理"项
+- 2026-07-16: 完成任务 10.1-10.2：对话管理角色列防换行（white-space:nowrap）；模型对话加载效果改为蓝色圆点弹跳动画；数智大屏饼图图例位置修复（中心上移、半径缩小、图例紧凑）
+- 2026-07-16: 完成任务 10.3 后台主页优化：AdminIndexHandler 查询真实统计数据（用户/仓库/员工/模型），4个渐变色统计卡片；快捷操作3个入口（数智大屏/数据仓库/对话管理）；功能导航8个入口全部链接到实际路由；移除所有"功能开发中"占位
+- 2026-07-16: 完成任务 10.4 前台功能修复：天气卡片中文化（使用用户输入的中文城市名 + lang_zh 字段 + 扩展翻译词条20+）；新闻API修复（vvhan SSL 错误，添加 60s.viki.moe 备用 API，follow_redirects=True，_parse_news_card 兼容三种格式）
+- 2026-07-16: 维护 docs/ 文档：requirement.md 新增任务 9.3/10/10.1-10.4 已实现功能说明和变更记录；project_tree_full.txt 新增 chat_message.html
