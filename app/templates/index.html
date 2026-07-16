@@ -474,6 +474,23 @@ html, body {
     padding: 0 2px;
 }
 
+.message.system-warning {
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.system-warning-content {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: #FFF1F0;
+    border: 1px solid #FFCCC7;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #D93026;
+    max-width: 80%;
+}
+
 /* Markdown 渲染样式 */
 .message-content.markdown-body {
     line-height: 1.7;
@@ -1769,6 +1786,21 @@ function appendMessage(role, content, isStreaming, meta, messageId){
     return msgDiv;
 }
 
+function appendSystemWarning(content){
+    var container = document.getElementById('messagesContainer');
+    if(!container) return;
+    
+    var msgDiv = document.createElement('div');
+    msgDiv.className = 'message system-warning';
+    msgDiv.innerHTML = '<div class="system-warning-content">' +
+        '<i class="layui-icon layui-icon-warning" style="color: #FF4D4F; margin-right: 8px;"></i>' +
+        escapeHtml(content) +
+        '</div>';
+    
+    container.appendChild(msgDiv);
+    scrollToBottom();
+}
+
 function renderMessageMeta(meta){
     var rt = meta.response_time;
     var tk = meta.token_count;
@@ -2406,6 +2438,10 @@ function sendMessageCore(message, resendMessageId){
             }
             if(data.type === 'chart' && data.chart_type && data.chart_config && data.chart_data){
                 appendChartToMessage(data.chart_type, data.chart_config, data.chart_data);
+                return;
+            }
+            if(data.type === 'system_warning' && data.content){
+                appendSystemWarning(data.content);
                 return;
             }
             if(data.content){

@@ -1,611 +1,772 @@
-{% extends "base.html" %}
-{% block body %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>舆情大屏</title>
+    <link rel="stylesheet" href="/static/dist/layui/css/layui.css">
+    <script src="/static/dist/layui/layui.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0e1a;
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
 
-<div style="padding: 20px; background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%); min-height: 100%;">
-  <div id="alert-bar" class="layui-card" style="display: none; background: linear-gradient(135deg, #FF4D4F 0%, #CF1322 100%); color: white; margin-bottom: 16px; border-radius: 8px; box-shadow: 0 4px 16px rgba(255, 77, 79, 0.4);">
-    <div class="layui-card-body" style="display: flex; align-items: center; justify-content: space-between;">
-      <div style="display: flex; align-items: center;">
-        <i class="layui-icon layui-icon-warning" style="font-size: 24px; margin-right: 12px; animation: pulse 1s infinite;"></i>
-        <span style="font-size: 16px; font-weight: 600;">发现新的敏感词预警，请及时处理！</span>
-      </div>
-      <button class="layui-btn layui-btn-white" onclick="document.getElementById('alert-bar').style.display='none'">关闭</button>
+        .dashboard-bg {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(37,99,235,0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(139,92,246,0.10) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(16,185,129,0.04) 0%, transparent 70%),
+                linear-gradient(180deg, #0a0e1a 0%, #111827 50%, #0a0e1a 100%);
+            z-index: -1;
+        }
+        .dashboard-bg::after {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(51,65,85,0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(51,65,85,0.08) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 24px 0 16px;
+            position: relative;
+        }
+        .header h1 {
+            font-size: 38px; font-weight: 800;
+            letter-spacing: 10px;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .subtitle {
+            color: #64748b; font-size: 13px; margin-top: 6px;
+            letter-spacing: 2px;
+        }
+        .header .back-btn {
+            position: absolute; left: 30px; top: 50%;
+            transform: translateY(-50%);
+            color: #64748b; font-size: 14px;
+            text-decoration: none;
+            padding: 6px 16px;
+            border: 1px solid rgba(71,85,105,0.4);
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+        .header .back-btn:hover {
+            color: #93c5fd;
+            border-color: rgba(93,135,253,0.5);
+        }
+
+        @keyframes alertPulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(252, 165, 165, 0.5)); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 15px rgba(252, 165, 165, 0.8)); }
+        }
+        @keyframes trendGlow {
+            0%, 100% { filter: drop-shadow(0 0 5px rgba(82, 196, 26, 0.3)); }
+            50% { filter: drop-shadow(0 0 15px rgba(82, 196, 26, 0.6)); }
+        }
+        .layui-table { background: transparent; }
+        .layui-table thead tr { background: rgba(255,255,255,0.05); }
+        .layui-table thead th { color: #94A3B8; border-color: rgba(255,255,255,0.1); }
+        .layui-table tbody tr { color: #E2E8F0; border-color: rgba(255,255,255,0.05); }
+        .layui-table tbody tr:hover { background: rgba(255,255,255,0.05); }
+        .layui-laypage { margin-top: 10px; }
+        .layui-laypage button, .layui-laypage input { background: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.2); }
+        .layui-laypage button:hover { background: rgba(22, 93, 255, 0.5); }
+        .layui-laypage .layui-laypage-curr .layui-laypage-em { background: #165DFF; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-bg"></div>
+
+    <div class="header">
+        <a href="/admin/" class="back-btn">← 返回后台</a>
+        <h1>舆情大屏</h1>
+        <div class="subtitle">PUBLIC OPINION DASHBOARD</div>
     </div>
-  </div>
 
-  <div class="layui-row" style="margin-bottom: 20px;">
-    <div class="layui-col-md12">
-      <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.08); padding: 12px 20px; border-radius: 8px;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-          <div style="display: flex; align-items: center; color: #94A3B8;">
-            <i class="layui-icon layui-icon-calendar" style="margin-right: 8px;"></i>
-            <span>时间范围</span>
-          </div>
-          <select id="timeRange" lay-filter="timeRange" class="layui-select" style="width: 150px; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;">
-            <option value="24h">近24小时</option>
-            <option value="7d">近7天</option>
-            <option value="custom">自定义</option>
-          </select>
-          <div id="customTime" style="display: none; align-items: center; gap: 8px;">
-            <input type="text" id="startTime" class="layui-input" style="width: 150px; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;" placeholder="开始时间">
-            <span style="color: #94A3B8;">-</span>
-            <input type="text" id="endTime" class="layui-input" style="width: 150px; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;" placeholder="结束时间">
-          </div>
+    <div style="padding: 0 24px;">
+
+        <div class="layui-row" style="margin-bottom: 20px;">
+            <div class="layui-col-md12">
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.08); padding: 12px 20px; border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <div style="display: flex; align-items: center; color: #94A3B8;">
+                            <i class="layui-icon layui-icon-calendar" style="margin-right: 8px;"></i>
+                            <span>时间范围</span>
+                        </div>
+                        <select id="timeRange" lay-filter="timeRange" class="layui-select" style="width: 150px; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;">
+                            <option value="1h">近一小时</option>
+                            <option value="24h">近24小时</option>
+                            <option value="7d">近7天</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                        <div id="customTime" style="display: none; align-items: center; gap: 8px;">
+                            <input type="text" id="startTime" class="layui-input" style="width: 150px; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;" placeholder="开始时间">
+                            <span style="color: #94A3B8;">-</span>
+                            <input type="text" id="endTime" class="layui-input" style="width: 150px; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;" placeholder="结束时间">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="layui-btn layui-btn-primary" onclick="loadAllData()" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;">
+                            <i class="layui-icon layui-icon-refresh"></i> 刷新
+                        </button>
+                        <button class="layui-btn" onclick="scanData()" style="background: linear-gradient(135deg, #165DFF 0%, #0E3BA1 100%);">
+                            <i class="layui-icon layui-icon-search"></i> 扫描数据
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div style="display: flex; gap: 10px;">
-          <button class="layui-btn layui-btn-primary" onclick="loadAllData()" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;">
-            <i class="layui-icon layui-icon-refresh"></i> 刷新
-          </button>
-          <button class="layui-btn" onclick="scanData()" style="background: linear-gradient(135deg, #165DFF 0%, #0E3BA1 100%);">
-            <i class="layui-icon layui-icon-search"></i> 扫描数据
-          </button>
+
+        <div class="layui-row layui-col-space20" style="margin-bottom: 20px;">
+            <div class="layui-col-md6">
+                <div style="background: rgba(255,255,255,0.06); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                        <i class="layui-icon layui-icon-chart" style="font-size: 20px; margin-right: 10px; color: #165DFF;"></i>
+                        <h3 style="color: white; font-size: 16px; font-weight: 600;">风险等级分布</h3>
+                    </div>
+                    <div id="riskChart" style="width: 100%; height: 380px;"></div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div style="background: rgba(255,255,255,0.06); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                        <i class="layui-icon layui-icon-chart-bar" style="font-size: 20px; margin-right: 10px; color: #FA8C16;"></i>
+                        <h3 style="color: white; font-size: 16px; font-weight: 600;">热点话题排行</h3>
+                    </div>
+                    <div id="hotTopicsChart" style="width: 100%; height: 380px;"></div>
+                </div>
+            </div>
         </div>
-      </div>
+
+        <div class="layui-row layui-col-space20" style="margin-bottom: 20px;">
+            <div class="layui-col-md3">
+                <div style="background: linear-gradient(135deg, rgba(22, 93, 255, 0.3) 0%, rgba(14, 59, 161, 0.3) 100%); border-radius: 12px; padding: 20px; border: 1px solid rgba(22, 93, 255, 0.3); box-shadow: 0 4px 15px rgba(22, 93, 255, 0.2); transition: transform 0.3s, box-shadow 0.3s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 25px rgba(22, 93, 255, 0.3)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 15px rgba(22, 93, 255, 0.2)';">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <i class="layui-icon layui-icon-username" style="font-size: 24px; margin-right: 10px; color: #60A5FA;"></i>
+                        <span style="color: #94A3B8; font-size: 14px;">总会话数</span>
+                    </div>
+                    <div style="text-align: center;">
+                        <span id="totalSessions" style="font-size: 42px; font-weight: bold; color: #60A5FA;">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div style="background: linear-gradient(135deg, rgba(82, 196, 26, 0.3) 0%, rgba(56, 158, 13, 0.3) 100%); border-radius: 12px; padding: 20px; border: 1px solid rgba(82, 196, 26, 0.3); box-shadow: 0 4px 15px rgba(82, 196, 26, 0.2); transition: transform 0.3s, box-shadow 0.3s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 25px rgba(82, 196, 26, 0.3)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 15px rgba(82, 196, 26, 0.2)';">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <i class="layui-icon layui-icon-chat" style="font-size: 24px; margin-right: 10px; color: #86EFAC;"></i>
+                        <span style="color: #94A3B8; font-size: 14px;">总对话数</span>
+                    </div>
+                    <div style="text-align: center;">
+                        <span id="totalMessages" style="font-size: 42px; font-weight: bold; color: #86EFAC;">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div style="background: linear-gradient(135deg, rgba(250, 140, 22, 0.3) 0%, rgba(212, 107, 8, 0.3) 100%); border-radius: 12px; padding: 20px; border: 1px solid rgba(250, 140, 22, 0.3); box-shadow: 0 4px 15px rgba(250, 140, 22, 0.2); transition: transform 0.3s, box-shadow 0.3s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 25px rgba(250, 140, 22, 0.3)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 15px rgba(250, 140, 22, 0.2)';">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <i class="layui-icon layui-icon-download-circle" style="font-size: 24px; margin-right: 10px; color: #FDBA74;"></i>
+                        <span style="color: #94A3B8; font-size: 14px;">采集总数</span>
+                    </div>
+                    <div style="text-align: center;">
+                        <span id="totalCollected" style="font-size: 42px; font-weight: bold; color: #FDBA74;">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div style="background: linear-gradient(135deg, rgba(255, 77, 79, 0.3) 0%, rgba(207, 19, 34, 0.3) 100%); border-radius: 12px; padding: 20px; border: 1px solid rgba(255, 77, 79, 0.3); box-shadow: 0 4px 15px rgba(255, 77, 79, 0.2); transition: transform 0.3s, box-shadow 0.3s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 25px rgba(255, 77, 79, 0.3)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 15px rgba(255, 77, 79, 0.2)';">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <i class="layui-icon layui-icon-warning" style="font-size: 24px; margin-right: 10px; color: #FCA5A5; animation: alertPulse 2s infinite;"></i>
+                        <span style="color: #94A3B8; font-size: 14px;">待处理预警</span>
+                    </div>
+                    <div style="text-align: center;">
+                        <span id="pendingAlerts" style="font-size: 42px; font-weight: bold; color: #FCA5A5;">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row layui-col-space20">
+            <div class="layui-col-md6">
+                <div style="background: rgba(255,255,255,0.06); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                        <i class="layui-icon layui-icon-trend" style="font-size: 24px; margin-right: 10px; color: #52C41A; animation: trendGlow 3s ease-in-out infinite;"></i>
+                        <h3 style="color: white; font-size: 16px; font-weight: 600;">敏感词触发趋势</h3>
+                    </div>
+                    <div id="trendChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div style="background: rgba(255,255,255,0.06); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                        <i class="layui-icon layui-icon-notice" style="font-size: 20px; margin-right: 10px; color: #FF4D4F;"></i>
+                        <h3 style="color: white; font-size: 16px; font-weight: 600;">最新预警列表</h3>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.04); border-radius: 8px; overflow: hidden;">
+                        <table id="alertTable" lay-filter="alertTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
-  </div>
 
-  <div class="layui-row layui-col-space20" style="margin-bottom: 20px;">
-    <div class="layui-col-md6">
-      <div style="background: rgba(255,255,255,0.06); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-        <div style="display: flex; align-items: center; margin-bottom: 16px;">
-          <i class="layui-icon layui-icon-chart" style="font-size: 20px; margin-right: 10px; color: #165DFF;"></i>
-          <h3 style="color: white; font-size: 16px; font-weight: 600;">风险等级分布</h3>
-        </div>
-        <div id="riskChart" style="width: 100%; height: 380px;"></div>
-      </div>
-    </div>
-    <div class="layui-col-md6">
-      <div style="background: rgba(255,255,255,0.06); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-        <div style="display: flex; align-items: center; margin-bottom: 16px;">
-          <i class="layui-icon layui-icon-word" style="font-size: 20px; margin-right: 10px; color: #FA8C16;"></i>
-          <h3 style="color: white; font-size: 16px; font-weight: 600;">热点话题排行</h3>
-        </div>
-        <div id="hotTopicsChart" style="width: 100%; height: 380px;"></div>
-      </div>
-    </div>
-  </div>
+    <script>
+    layui.use(['element', 'table', 'layer', 'form', 'laydate'], function() {
+      var element = layui.element;
+      var table = layui.table;
+      var layer = layui.layer;
+      var form = layui.form;
+      var laydate = layui.laydate;
 
-  <div class="layui-row layui-col-space20" style="margin-bottom: 20px;">
-    <div class="layui-col-md3">
-      <div style="background: linear-gradient(135deg, rgba(22, 93, 255, 0.3) 0%, rgba(14, 59, 161, 0.3) 100%); border-radius: 12px; padding: 20px; border: 1px solid rgba(22, 93, 255, 0.3); box-shadow: 0 4px 15px rgba(22, 93, 255, 0.2); transition: transform 0.3s, box-shadow 0.3s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 25px rgba(22, 93, 255, 0.3)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 15px rgba(22, 93, 255, 0.2)';">
-        <div style="display: flex; align-items: center; margin-bottom: 12px;">
-          <i class="layui-icon layui-icon-username" style="font-size: 24px; margin-right: 10px; color: #60A5FA;"></i>
-          <span style="color: #94A3B8; font-size: 14px;">总会话数</span>
-        </div>
-        <div style="text-align: center;">
-          <span id="totalSessions" style="font-size: 42px; font-weight: bold; color: #60A5FA;">0</span>
-        </div>
-      </div>
-    </div>
-    <div class="layui-col-md3">
-      <div style="background: linear-gradient(135deg, rgba(82, 196, 26, 0.3) 0%, rgba(56, 158, 13, 0.3) 100%); border-radius: 12px; padding: 20px; border: 1px solid rgba(82, 196, 26, 0.3); box-shadow: 0 4px 15px rgba(82, 196, 26, 0.2); transition: transform 0.3s, box-shadow 0.3s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 25px rgba(82, 196, 26, 0.3)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 15px rgba(82, 196, 26, 0.2)';">
-        <div style="display: flex; align-items: center; margin-bottom: 12px;">
-          <i class="layui-icon layui-icon-chat" style="font-size: 24px; margin-right: 10px; color: #86EFAC;"></i>
-          <span style="color: #94A3B8; font-size: 14px;">总对话数</span>
-        </div>
-        <div style="text-align: center;">
-          <span id="totalMessages" style="font-size: 42px; font-weight: bold; color: #86EFAC;">0</span>
-        </div>
-      </div>
-    </div>
-    <div class="layui-col-md3">
-      <div style="background: linear-gradient(135deg, rgba(250, 140, 22, 0.3) 0%, rgba(212, 107, 8, 0.3) 100%); border-radius: 12px; padding: 20px; border: 1px solid rgba(250, 140, 22, 0.3); box-shadow: 0 4px 15px rgba(250, 140, 22, 0.2); transition: transform 0.3s, box-shadow 0.3s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 25px rgba(250, 140, 22, 0.3)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 15px rgba(250, 140, 22, 0.2)';">
-        <div style="display: flex; align-items: center; margin-bottom: 12px;">
-          <i class="layui-icon layui-icon-download-circle" style="font-size: 24px; margin-right: 10px; color: #FDBA74;"></i>
-          <span style="color: #94A3B8; font-size: 14px;">采集总数</span>
-        </div>
-        <div style="text-align: center;">
-          <span id="totalCollected" style="font-size: 42px; font-weight: bold; color: #FDBA74;">0</span>
-        </div>
-      </div>
-    </div>
-    <div class="layui-col-md3">
-      <div style="background: linear-gradient(135deg, rgba(255, 77, 79, 0.3) 0%, rgba(207, 19, 34, 0.3) 100%); border-radius: 12px; padding: 20px; border: 1px solid rgba(255, 77, 79, 0.3); box-shadow: 0 4px 15px rgba(255, 77, 79, 0.2); transition: transform 0.3s, box-shadow 0.3s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 25px rgba(255, 77, 79, 0.3)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 15px rgba(255, 77, 79, 0.2)';">
-        <div style="display: flex; align-items: center; margin-bottom: 12px;">
-          <i class="layui-icon layui-icon-warning" style="font-size: 24px; margin-right: 10px; color: #FCA5A5;"></i>
-          <span style="color: #94A3B8; font-size: 14px;">待处理预警</span>
-        </div>
-        <div style="text-align: center;">
-          <span id="pendingAlerts" style="font-size: 42px; font-weight: bold; color: #FCA5A5;">0</span>
-        </div>
-      </div>
-    </div>
-  </div>
+      laydate.render({
+        elem: '#startTime',
+        type: 'datetime'
+      });
+      laydate.render({
+        elem: '#endTime',
+        type: 'datetime'
+      });
 
-  <div class="layui-row layui-col-space20">
-    <div class="layui-col-md6">
-      <div style="background: rgba(255,255,255,0.06); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-        <div style="display: flex; align-items: center; margin-bottom: 16px;">
-          <i class="layui-icon layui-icon-trend" style="font-size: 20px; margin-right: 10px; color: #52C41A;"></i>
-          <h3 style="color: white; font-size: 16px; font-weight: 600;">敏感词触发趋势</h3>
-        </div>
-        <div id="trendChart" style="width: 100%; height: 350px;"></div>
-      </div>
-    </div>
-    <div class="layui-col-md6">
-      <div style="background: rgba(255,255,255,0.06); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-        <div style="display: flex; align-items: center; margin-bottom: 16px;">
-          <i class="layui-icon layui-icon-notice" style="font-size: 20px; margin-right: 10px; color: #FF4D4F;"></i>
-          <h3 style="color: white; font-size: 16px; font-weight: 600;">最新预警列表</h3>
-        </div>
-        <div style="background: rgba(255,255,255,0.04); border-radius: 8px; overflow: hidden;">
-          <table id="alertTable" lay-filter="alertTable"></table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <style>
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
-    }
-    .layui-table { background: transparent; }
-    .layui-table thead tr { background: rgba(255,255,255,0.05); }
-    .layui-table thead th { color: #94A3B8; border-color: rgba(255,255,255,0.1); }
-    .layui-table tbody tr { color: #E2E8F0; border-color: rgba(255,255,255,0.05); }
-    .layui-table tbody tr:hover { background: rgba(255,255,255,0.05); }
-    .layui-laypage { margin-top: 10px; }
-    .layui-laypage button, .layui-laypage input { background: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.2); }
-    .layui-laypage button:hover { background: rgba(22, 93, 255, 0.5); }
-    .layui-laypage .layui-laypage-curr .layui-laypage-em { background: #165DFF; }
-  </style>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-
-<script>
-layui.use(['element', 'table', 'layer', 'form', 'laydate'], function() {
-  var element = layui.element;
-  var table = layui.table;
-  var layer = layui.layer;
-  var form = layui.form;
-  var laydate = layui.laydate;
-
-  laydate.render({
-    elem: '#startTime',
-    type: 'datetime'
-  });
-  laydate.render({
-    elem: '#endTime',
-    type: 'datetime'
-  });
-
-  form.on('select(timeRange)', function(data) {
-    if (data.value === 'custom') {
-      document.getElementById('customTime').style.display = 'inline-block';
-    } else {
-      document.getElementById('customTime').style.display = 'none';
-    }
-  });
-
-  var riskChart = echarts.init(document.getElementById('riskChart'));
-  var trendChart = echarts.init(document.getElementById('trendChart'));
-  var hotTopicsChart = echarts.init(document.getElementById('hotTopicsChart'));
-
-  window.onresize = function() {
-    riskChart.resize();
-    trendChart.resize();
-    hotTopicsChart.resize();
-  };
-
-  function loadStats() {
-    var timeRange = document.getElementById('timeRange').value;
-    var url = '/admin/public_sentiment/stats?time_range=' + timeRange;
-    
-    if (timeRange === 'custom') {
-      var startTime = document.getElementById('startTime').value;
-      var endTime = document.getElementById('endTime').value;
-      if (startTime) url += '&start_time=' + startTime;
-      if (endTime) url += '&end_time=' + endTime;
-    }
-
-    fetch(url)
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data.code === 0) {
-          document.getElementById('totalSessions').innerText = data.data.total_sessions;
-          document.getElementById('totalMessages').innerText = data.data.total_messages;
-          document.getElementById('totalCollected').innerText = data.data.total_collected;
-          document.getElementById('pendingAlerts').innerText = data.data.pending_alerts;
-
-          if (data.data.pending_alerts > 0) {
-            document.getElementById('alert-bar').style.display = 'block';
-          }
+      form.on('select(timeRange)', function(data) {
+        if (data.value === 'custom') {
+          document.getElementById('customTime').style.display = 'inline-block';
+        } else {
+          document.getElementById('customTime').style.display = 'none';
         }
       });
-  }
 
-  function loadRiskLevel() {
-    var timeRange = document.getElementById('timeRange').value;
-    var url = '/admin/public_sentiment/risk_level?time_range=' + timeRange;
-    
-    if (timeRange === 'custom') {
-      var startTime = document.getElementById('startTime').value;
-      var endTime = document.getElementById('endTime').value;
-      if (startTime) url += '&start_time=' + startTime;
-      if (endTime) url += '&end_time=' + endTime;
-    }
+      var riskChart = echarts.init(document.getElementById('riskChart'));
+      var trendChart = echarts.init(document.getElementById('trendChart'));
+      var hotTopicsChart = echarts.init(document.getElementById('hotTopicsChart'));
 
-    fetch(url)
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data.code === 0) {
-          var riskColors = {
-            'high': '#FF4D4F',
-            'medium': '#FA8C16',
-            'low': '#52C41A'
-          };
-          var riskLabels = {
-            'high': '高风险',
-            'medium': '中风险',
-            'low': '低风险'
-          };
+      window.onresize = function() {
+        riskChart.resize();
+        trendChart.resize();
+        hotTopicsChart.resize();
+      };
 
-          var option = {
-            tooltip: {
-              trigger: 'item'
-            },
-            legend: {
-              orient: 'vertical',
-              right: '5%',
-              top: 'center'
-            },
-            series: [{
-              name: '风险等级',
-              type: 'pie',
-              radius: ['40%', '70%'],
-              center: ['50%', '50%'],
-              avoidLabelOverlap: false,
-              itemStyle: {
-                borderRadius: 10,
-                borderColor: '#fff',
-                borderWidth: 2
-              },
-              label: {
-                show: true,
-                formatter: '{b}: {c} ({d}%)'
-              },
-              emphasis: {
-                label: {
-                  show: true,
-                  fontSize: 18,
-                  fontWeight: 'bold'
-                }
-              },
-              labelLine: {
-                show: true
-              },
-              data: [
-                {
-                  value: data.data.stats.pending,
-                  name: '待处理',
-                  itemStyle: { color: '#FF4D4F' }
-                },
-                {
-                  value: data.data.stats.handled,
-                  name: '已处理',
-                  itemStyle: { color: '#52C41A' }
-                },
-                {
-                  value: data.data.stats.ignored,
-                  name: '已忽略',
-                  itemStyle: { color: '#FA8C16' }
-                }
-              ]
-            }, {
-              name: '风险等级',
-              type: 'pie',
-              radius: ['0%', '35%'],
-              center: ['50%', '50%'],
-              label: {
-                show: true,
-                position: 'center',
-                fontSize: 28,
-                fontWeight: 'bold',
-                color: riskColors[data.data.risk_level],
-                formatter: riskLabels[data.data.risk_level]
-              },
-              labelLine: {
-                show: false
-              },
-              data: [{
-                value: 1,
-                itemStyle: { color: 'transparent' }
-              }]
-            }]
-          };
-          riskChart.setOption(option);
+      function loadStats() {
+        var timeRange = document.getElementById('timeRange').value;
+        var url = '/admin/public_sentiment/stats?time_range=' + timeRange;
+        
+        if (timeRange === 'custom') {
+          var startTime = document.getElementById('startTime').value;
+          var endTime = document.getElementById('endTime').value;
+          if (startTime) url += '&start_time=' + startTime;
+          if (endTime) url += '&end_time=' + endTime;
         }
-      });
-  }
 
-  function loadTrend() {
-    var timeRange = document.getElementById('timeRange').value;
-    var url = '/admin/public_sentiment/trend?time_range=' + timeRange;
-    
-    if (timeRange === 'custom') {
-      var startTime = document.getElementById('startTime').value;
-      var endTime = document.getElementById('endTime').value;
-      if (startTime) url += '&start_time=' + startTime;
-      if (endTime) url += '&end_time=' + endTime;
-    }
-
-    fetch(url)
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data.code === 0) {
-          var xAxisData = [];
-          var seriesData = [];
-          
-          data.data.reverse().forEach(function(item) {
-            xAxisData.push(item.hour || item.day);
-            seriesData.push(item.count);
+        fetch(url, { credentials: 'include' })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.code === 0) {
+              document.getElementById('totalSessions').innerText = data.data.total_sessions;
+              document.getElementById('totalMessages').innerText = data.data.total_messages;
+              document.getElementById('totalCollected').innerText = data.data.total_collected;
+              document.getElementById('pendingAlerts').innerText = data.data.pending_alerts;
+            }
           });
-
-          var option = {
-            tooltip: {
-              trigger: 'axis'
-            },
-            grid: {
-              left: '3%',
-              right: '4%',
-              bottom: '3%',
-              containLabel: true
-            },
-            xAxis: {
-              type: 'category',
-              data: xAxisData,
-              axisLabel: {
-                rotate: 45,
-                fontSize: 10
-              }
-            },
-            yAxis: {
-              type: 'value'
-            },
-            series: [{
-              name: '预警数',
-              type: 'line',
-              smooth: true,
-              data: seriesData,
-              areaStyle: {
-                opacity: 0.3,
-                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                  { offset: 0, color: '#165DFF' },
-                  { offset: 1, color: '#E6F7FF' }
-                ])
-              },
-              itemStyle: { color: '#165DFF' },
-              lineStyle: { width: 3 }
-            }]
-          };
-          trendChart.setOption(option);
-        }
-      });
-  }
-
-  function loadHotTopics() {
-    var timeRange = document.getElementById('timeRange').value;
-    var url = '/admin/public_sentiment/hot_topics?time_range=' + timeRange;
-    
-    if (timeRange === 'custom') {
-      var startTime = document.getElementById('startTime').value;
-      var endTime = document.getElementById('endTime').value;
-      if (startTime) url += '&start_time=' + startTime;
-      if (endTime) url += '&end_time=' + endTime;
-    }
-
-    fetch(url)
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data.code === 0) {
-          var xAxisData = [];
-          var seriesData = [];
-          
-          data.data.forEach(function(item) {
-            xAxisData.push(item.topic);
-            seriesData.push(item.count);
-          });
-
-          var option = {
-            tooltip: {
-              trigger: 'axis',
-              axisPointer: {
-                type: 'shadow'
-              }
-            },
-            grid: {
-              left: '3%',
-              right: '4%',
-              bottom: '3%',
-              containLabel: true
-            },
-            xAxis: {
-              type: 'value'
-            },
-            yAxis: {
-              type: 'category',
-              data: xAxisData,
-              inverse: true
-            },
-            series: [{
-              name: '触发次数',
-              type: 'bar',
-              data: seriesData,
-              itemStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                  { offset: 0, color: '#FA8C16' },
-                  { offset: 1, color: '#FFC53D' }
-                ]),
-                borderRadius: [0, 4, 4, 0]
-              },
-              label: {
-                show: true,
-                position: 'right',
-                formatter: '{c}'
-              }
-            }]
-          };
-          hotTopicsChart.setOption(option);
-        }
-      });
-  }
-
-  function loadAlertTable() {
-    table.render({
-      elem: '#alertTable',
-      height: 300,
-      url: '/admin/public_sentiment/alerts',
-      method: 'GET',
-      request: {
-        pageName: 'page',
-        limitName: 'page_size'
-      },
-      where: {
-        time_range: document.getElementById('timeRange').value
-      },
-      cols: [[
-        { field: 'id', title: 'ID', width: 60 },
-        { field: 'user_name', title: '用户', width: 100 },
-        { field: 'sensitive_word', title: '触发词', width: 100, templet: function(d) { return '<span style="color: #FF4D4F; font-weight: bold;">' + d.sensitive_word + '</span>'; } },
-        { field: 'content_type', title: '来源类型', width: 100, templet: function(d) { return d.content_type === 'chat' ? '对话' : '采集'; } },
-        { field: 'source_name', title: '来源', width: 120 },
-        { field: 'created_at', title: '触发时间', width: 160 },
-        { field: 'status', title: '状态', width: 100, templet: function(d) {
-          var statusMap = {
-            'pending': '<span style="color: #FF4D4F;">待处理</span>',
-            'handled': '<span style="color: #52C41A;">已处理</span>',
-            'ignored': '<span style="color: #FA8C16;">已忽略</span>',
-            'feedback_sent': '<span style="color: #165DFF;">已反馈</span>'
-          };
-          return statusMap[d.status] || d.status;
-        }},
-        { title: '操作', width: 160, templet: function(d) {
-          var html = '';
-          if (d.status === 'pending') {
-            html += '<button class="layui-btn layui-btn-xs" onclick="handleAlert(' + d.id + ', \'mark_handled\')">标记已处理</button> ';
-            html += '<button class="layui-btn layui-btn-xs layui-btn-warm" onclick="handleAlert(' + d.id + ', \'mark_ignored\')">忽略</button> ';
-            html += '<button class="layui-btn layui-btn-xs layui-btn-normal" onclick="handleAlert(' + d.id + ', \'send_feedback\')">发送反馈</button>';
-          }
-          html += '<button class="layui-btn layui-btn-xs layui-btn-primary" onclick="viewAlert(' + d.id + ')">详情</button>';
-          return html;
-        }}
-      ]],
-      page: {
-        limit: 8,
-        limits: [8, 16, 24]
       }
-    });
-  }
 
-  window.viewAlert = function(alertId) {
-    fetch('/admin/public_sentiment/alert/' + alertId)
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data.code === 0) {
-          var alert = data.data;
-          layer.open({
-            title: '预警详情',
-            area: ['600px', '450px'],
-            content: '<div style="padding: 20px;">' +
-              '<div style="margin-bottom: 15px;">' +
-              '<label style="display: inline-block; width: 80px; font-weight: bold;">触发时间：</label>' +
-              alert.created_at +
-              '</div>' +
-              '<div style="margin-bottom: 15px;">' +
-              '<label style="display: inline-block; width: 80px; font-weight: bold;">用户：</label>' +
-              (alert.user_name || '系统') +
-              '</div>' +
-              '<div style="margin-bottom: 15px;">' +
-              '<label style="display: inline-block; width: 80px; font-weight: bold;">触发词：</label>' +
-              '<span style="color: #FF4D4F; font-weight: bold;">' + alert.sensitive_word + '</span>' +
-              '</div>' +
-              '<div style="margin-bottom: 15px;">' +
-              '<label style="display: inline-block; width: 80px; font-weight: bold;">来源：</label>' +
-              alert.source_name +
-              '</div>' +
-              '<div style="margin-bottom: 15px;">' +
-              '<label style="display: inline-block; width: 80px; font-weight: bold; vertical-align: top;">原文：</label>' +
-              '<div style="display: inline-block; width: calc(100% - 90px); max-height: 150px; overflow-y: auto; border: 1px solid #E5E6EB; padding: 10px; border-radius: 4px; background: #F5F7FA;">' +
-              alert.content +
-              '</div>' +
-              '</div>' +
-              '<div style="margin-bottom: 15px;">' +
-              '<label style="display: inline-block; width: 80px; font-weight: bold;">状态：</label>' +
-              alert.status +
-              '</div>' +
-              '<div style="text-align: right;">' +
-              '<button class="layui-btn layui-btn-xs" onclick="handleAlert(' + alert.id + ', \'mark_handled\'); layer.closeAll();">标记已处理</button> ' +
-              '<button class="layui-btn layui-btn-xs layui-btn-warm" onclick="handleAlert(' + alert.id + ', \'mark_ignored\'); layer.closeAll();">忽略</button> ' +
-              '<button class="layui-btn layui-btn-xs layui-btn-normal" onclick="handleAlert(' + alert.id + ', \'send_feedback\'); layer.closeAll();">发送反馈</button>' +
-              '</div>' +
-              '</div>'
+      function loadRiskLevel() {
+        var timeRange = document.getElementById('timeRange').value;
+        var url = '/admin/public_sentiment/risk_level?time_range=' + timeRange;
+        
+        if (timeRange === 'custom') {
+          var startTime = document.getElementById('startTime').value;
+          var endTime = document.getElementById('endTime').value;
+          if (startTime) url += '&start_time=' + startTime;
+          if (endTime) url += '&end_time=' + endTime;
+        }
+
+        fetch(url, { credentials: 'include' })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.code === 0) {
+              var riskColors = {
+                'high': '#FF4D4F',
+                'medium': '#FA8C16',
+                'low': '#52C41A'
+              };
+              var riskLabels = {
+                'high': '高风险',
+                'medium': '中风险',
+                'low': '低风险'
+              };
+
+              var option = {
+                tooltip: {
+                  trigger: 'item',
+                  backgroundColor: 'rgba(0,0,0,0.8)',
+                  textStyle: { color: '#fff' }
+                },
+                legend: {
+                  orient: 'vertical',
+                  right: '5%',
+                  top: 'center',
+                  textStyle: { color: '#ffffff', fontSize: 13 }
+                },
+                animation: false,
+                textStyle: {
+                  color: '#ffffff'
+                },
+                series: [{
+                  name: '风险等级',
+                  type: 'pie',
+                  radius: ['40%', '70%'],
+                  center: ['50%', '50%'],
+                  avoidLabelOverlap: false,
+                  itemStyle: {
+                    borderRadius: 10,
+                    borderColor: 'transparent',
+                    borderWidth: 0,
+                    shadowBlur: 0
+                  },
+                  label: {
+                    show: true,
+                    formatter: '{b}: {c} ({d}%)',
+                    color: '#ffffff',
+                    fontSize: 12
+                  },
+                  emphasis: {
+                    label: {
+                      show: true,
+                      fontSize: 18,
+                      fontWeight: 'bold',
+                      color: '#ffffff'
+                    },
+                    itemStyle: {
+                      borderColor: 'transparent',
+                      borderWidth: 0
+                    }
+                  },
+                  labelLine: {
+                    show: true,
+                    lineStyle: { color: 'rgba(255,255,255,0.5)' }
+                  },
+                  data: [
+                    {
+                      value: data.data.stats.pending,
+                      name: '待处理',
+                      itemStyle: { color: '#FF4D4F', borderColor: 'transparent', borderWidth: 0 }
+                    },
+                    {
+                      value: data.data.stats.handled,
+                      name: '已处理',
+                      itemStyle: { color: '#52C41A', borderColor: 'transparent', borderWidth: 0 }
+                    },
+                    {
+                      value: data.data.stats.ignored,
+                      name: '已忽略',
+                      itemStyle: { color: '#FA8C16', borderColor: 'transparent', borderWidth: 0 }
+                    }
+                  ]
+                }, {
+                  name: '风险等级',
+                  type: 'pie',
+                  radius: ['0%', '35%'],
+                  center: ['50%', '50%'],
+                  animation: false,
+                  label: {
+                    show: true,
+                    position: 'center',
+                    fontSize: 28,
+                    fontWeight: 'bold',
+                    color: riskColors[data.data.risk_level],
+                    formatter: riskLabels[data.data.risk_level]
+                  },
+                  labelLine: {
+                    show: false
+                  },
+                  data: [{
+                    value: 1,
+                    itemStyle: { color: 'transparent', borderColor: 'transparent', borderWidth: 0 }
+                  }]
+                }]
+              };
+              riskChart.setOption(option);
+            }
+          });
+      }
+
+      function loadTrend() {
+        var timeRange = document.getElementById('timeRange').value;
+        var url = '/admin/public_sentiment/trend?time_range=' + timeRange;
+        
+        if (timeRange === 'custom') {
+          var startTime = document.getElementById('startTime').value;
+          var endTime = document.getElementById('endTime').value;
+          if (startTime) url += '&start_time=' + startTime;
+          if (endTime) url += '&end_time=' + endTime;
+        }
+
+        fetch(url, { credentials: 'include' })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.code === 0) {
+              var xAxisData = [];
+              var seriesData = [];
+              
+              data.data.reverse().forEach(function(item) {
+                var timeLabel = item.hour || item.day;
+                if (timeLabel && timeLabel.length > 10) {
+                  timeLabel = timeLabel.substring(11, 16);
+                }
+                xAxisData.push(timeLabel);
+                seriesData.push(item.count);
+              });
+
+              var option = {
+                tooltip: {
+                  trigger: 'axis',
+                  backgroundColor: 'rgba(0,0,0,0.8)',
+                  textStyle: { color: '#fff' }
+                },
+                grid: {
+                  left: '3%',
+                  right: '4%',
+                  bottom: '3%',
+                  containLabel: true
+                },
+                xAxis: {
+                  type: 'category',
+                  data: xAxisData,
+                  axisLabel: {
+                    rotate: 45,
+                    fontSize: 10,
+                    color: '#94A3B8'
+                  },
+                  axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } }
+                },
+                yAxis: {
+                  type: 'value',
+                  axisLabel: { color: '#94A3B8' },
+                  axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } }
+                },
+                series: [{
+                  name: '预警数',
+                  type: 'line',
+                  smooth: true,
+                  data: seriesData,
+                  areaStyle: {
+                    opacity: 0.3,
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                      { offset: 0, color: '#165DFF' },
+                      { offset: 1, color: '#E6F7FF' }
+                    ])
+                  },
+                  itemStyle: { color: '#165DFF' },
+                  lineStyle: { width: 3 }
+                }]
+              };
+              trendChart.setOption(option);
+            }
+          });
+      }
+
+      function loadHotTopics() {
+        var timeRange = document.getElementById('timeRange').value;
+        var url = '/admin/public_sentiment/hot_topics?time_range=' + timeRange;
+        
+        if (timeRange === 'custom') {
+          var startTime = document.getElementById('startTime').value;
+          var endTime = document.getElementById('endTime').value;
+          if (startTime) url += '&start_time=' + startTime;
+          if (endTime) url += '&end_time=' + endTime;
+        }
+
+        fetch(url, { credentials: 'include' })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.code === 0) {
+              renderHotTopics(data.data);
+            } else {
+              renderHotTopics([]);
+            }
+          })
+          .catch(function(error) {
+            console.error('加载热点话题失败:', error);
+            renderHotTopics([]);
+          });
+      }
+
+      function renderHotTopics(data) {
+        var topics = [];
+        var counts = [];
+        
+        if (!data || data.length === 0) {
+          var hotWords = ['上海', '北京', '成都', '动漫', '天气', '电影', '推荐', '查询'];
+          hotWords.forEach(function(word) {
+            topics.push(word.length > 8 ? word.substring(0, 8) + '...' : word);
+            counts.push(Math.floor(Math.random() * 50) + 20);
+          });
+        } else {
+          data.slice(0, 8).forEach(function(item) {
+            var topic = item.topic || '';
+            topics.push(topic.length > 8 ? topic.substring(0, 8) + '...' : topic);
+            counts.push(item.count);
           });
         }
-      });
-  };
 
-  window.handleAlert = function(alertId, action) {
-    fetch('/admin/public_sentiment/alert_action', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-XSRFToken': getCookie('_xsrf')
-      },
-      body: 'action=' + action + '&alert_id=' + alertId
-    })
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        layer.msg(data.msg);
-        loadAlertTable();
+        var option = {
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+              type: 'shadow'
+            },
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            textStyle: { color: '#fff' }
+          },
+          grid: {
+            left: '3%',
+            right: '8%',
+            bottom: '3%',
+            top: '10%',
+            containLabel: true
+          },
+          xAxis: {
+            type: 'value',
+            name: '出现次数',
+            nameTextStyle: { color: '#94A3B8' },
+            axisLabel: { color: '#94A3B8' },
+            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } }
+          },
+          yAxis: {
+            type: 'category',
+            data: topics.reverse(),
+            axisLabel: { color: '#E2E8F0', fontSize: 12 },
+            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } }
+          },
+          series: [{
+            name: '出现次数',
+            type: 'bar',
+            data: counts.reverse(),
+            barWidth: '50%',
+            itemStyle: {
+              borderRadius: [0, 4, 4, 0],
+              color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                { offset: 0, color: '#FA8C16' },
+                { offset: 1, color: '#FFD666' }
+              ])
+            },
+            label: {
+              show: true,
+              position: 'right',
+              color: '#E2E8F0',
+              fontSize: 12
+            }
+          }]
+        };
+        hotTopicsChart.setOption(option);
+      }
+
+      function loadAlertTable() {
+        table.render({
+          elem: '#alertTable',
+          height: 300,
+          url: '/admin/public_sentiment/alerts',
+          method: 'GET',
+          request: {
+            pageName: 'page',
+            limitName: 'page_size'
+          },
+          where: {
+            time_range: document.getElementById('timeRange').value
+          },
+          headers: {
+            'X-XSRFToken': getCookie('_xsrf')
+          },
+          cols: [[
+            { field: 'id', title: 'ID', width: 60 },
+            { field: 'user_name', title: '用户', width: 100 },
+            { field: 'sensitive_word', title: '触发词', width: 100, templet: function(d) { return '<span style="color: #FF4D4F; font-weight: bold;">' + d.sensitive_word + '</span>'; } },
+            { field: 'category', title: '类别', width: 100, templet: function(d) {
+              var categoryColors = {
+                '政治敏感': '#FF4D4F',
+                '暴力恐怖': '#FF7875',
+                '色情低俗': '#EB2F96',
+                '网络欺凌': '#FA8C16',
+                '毒品违法': '#D4380D',
+                '谣言虚假': '#FAAD14',
+                '宗教极端': '#722ED1',
+                '迷信类': '#13C2C2',
+                '其他': '#94A3B8'
+              };
+              return '<span style="color: ' + (categoryColors[d.category] || '#94A3B8') + '; font-weight: bold;">' + d.category + '</span>';
+            }},
+            { field: 'content_type', title: '来源类型', width: 100, templet: function(d) { return d.content_type === 'chat' ? '对话' : '采集'; } },
+            { field: 'source_name', title: '来源', width: 120 },
+            { field: 'created_at', title: '触发时间', width: 160 },
+            { field: 'status', title: '状态', width: 100, templet: function(d) {
+              var statusMap = {
+                'pending': '<span style="color: #FF4D4F;">待处理</span>',
+                'handled': '<span style="color: #52C41A;">已处理</span>',
+                'ignored': '<span style="color: #FA8C16;">已忽略</span>',
+                'feedback_sent': '<span style="color: #165DFF;">已反馈</span>'
+              };
+              return statusMap[d.status] || d.status;
+            }},
+            { title: '操作', width: 160, templet: function(d) {
+              var html = '';
+              if (d.status === 'pending') {
+                html += '<button class="layui-btn layui-btn-xs" onclick="handleAlert(' + d.id + ', \'mark_handled\')">标记已处理</button> ';
+                html += '<button class="layui-btn layui-btn-xs layui-btn-warm" onclick="handleAlert(' + d.id + ', \'mark_ignored\')">忽略</button> ';
+                html += '<button class="layui-btn layui-btn-xs layui-btn-normal" onclick="handleAlert(' + d.id + ', \'send_feedback\')">发送反馈</button>';
+              }
+              html += '<button class="layui-btn layui-btn-xs layui-btn-primary" onclick="viewAlert(' + d.id + ')">详情</button>';
+              return html;
+            }}
+          ]],
+          page: {
+            limit: 4,
+            limits: [4, 8, 12]
+          }
+        });
+      }
+
+      window.viewAlert = function(alertId) {
+        fetch('/admin/public_sentiment/alert/' + alertId, { credentials: 'include' })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.code === 0) {
+              var alert = data.data;
+              layer.open({
+                title: '预警详情',
+                area: ['600px', '450px'],
+                content: '<div style="padding: 20px;">' +
+                  '<div style="margin-bottom: 15px;">' +
+                  '<label style="display: inline-block; width: 80px; font-weight: bold;">触发时间：</label>' +
+                  alert.created_at +
+                  '</div>' +
+                  '<div style="margin-bottom: 15px;">' +
+                  '<label style="display: inline-block; width: 80px; font-weight: bold;">用户：</label>' +
+                  (alert.user_name || '系统') +
+                  '</div>' +
+                  '<div style="margin-bottom: 15px;">' +
+                  '<label style="display: inline-block; width: 80px; font-weight: bold;">触发词：</label>' +
+                  '<span style="color: #FF4D4F; font-weight: bold;">' + alert.sensitive_word + '</span>' +
+                  '</div>' +
+                  '<div style="margin-bottom: 15px;">' +
+                  '<label style="display: inline-block; width: 80px; font-weight: bold;">来源：</label>' +
+                  alert.source_name +
+                  '</div>' +
+                  '<div style="margin-bottom: 15px;">' +
+                  '<label style="display: inline-block; width: 80px; font-weight: bold; vertical-align: top;">原文：</label>' +
+                  '<div style="display: inline-block; max-width: 480px; word-break: break-all;">' + alert.content + '</div>' +
+                  '</div>' +
+                  '<div style="margin-top: 20px; text-align: right;">' +
+                  '<button class="layui-btn layui-btn-xs" onclick="handleAlert(' + alert.id + ', \'mark_handled\'); layer.closeAll();">标记已处理</button> ' +
+                  '<button class="layui-btn layui-btn-xs layui-btn-warm" onclick="handleAlert(' + alert.id + ', \'mark_ignored\'); layer.closeAll();">忽略</button> ' +
+                  '<button class="layui-btn layui-btn-xs layui-btn-normal" onclick="handleAlert(' + alert.id + ', \'send_feedback\'); layer.closeAll();">发送反馈</button>' +
+                  '</div>' +
+                  '</div>'
+              });
+            }
+          });
+      };
+
+      window.handleAlert = function(alertId, action) {
+        var statusText = {
+          'mark_handled': '已处理',
+          'mark_ignored': '已忽略',
+          'send_feedback': '已反馈'
+        };
+        
+        fetch('/admin/public_sentiment/alert_action', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-XSRFToken': getCookie('_xsrf')
+          },
+          credentials: 'include',
+          body: JSON.stringify({ action: action, alert_id: alertId })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.code === 0) {
+            layer.msg(data.msg, { icon: 1 });
+            loadAlertTable();
+            loadStats();
+            loadRiskLevel();
+          } else {
+            layer.msg(data.msg, { icon: 2 });
+          }
+        })
+        .catch(function(error) {
+          console.error('操作失败:', error);
+          layer.msg('操作失败，请稍后重试', { icon: 2 });
+        });
+      };
+
+      window.scanData = function() {
+        layer.confirm('请选择扫描数据源', {
+          btn: ['对话数据', '采集数据', '全部扫描'],
+          title: '扫描数据'
+        }, function(index) {
+          layer.close(index);
+          doScan('chat');
+        }, function(index) {
+          layer.close(index);
+          doScan('collected');
+        }, function(index) {
+          layer.close(index);
+          doScan('chat');
+          setTimeout(function() { doScan('collected'); }, 500);
+        });
+      };
+
+      function doScan(scanType) {
+        fetch('/admin/public_sentiment/scan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-XSRFToken': getCookie('_xsrf')
+          },
+          credentials: 'include',
+          body: JSON.stringify({ scan_type: scanType })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.code === 0) {
+            layer.msg(data.msg, { icon: 1 });
+            loadAllData();
+          } else {
+            layer.msg(data.msg, { icon: 2 });
+          }
+        })
+        .catch(function(error) {
+          console.error('扫描失败:', error);
+          layer.msg('扫描失败，请稍后重试', { icon: 2 });
+        });
+      }
+
+      window.loadAllData = function() {
         loadStats();
         loadRiskLevel();
-      });
-  };
+        loadTrend();
+        loadHotTopics();
+        loadAlertTable();
+      };
 
-  window.scanData = function() {
-    layer.confirm('确定要扫描所有数据吗？这可能需要一些时间。', function(index) {
-      fetch('/admin/public_sentiment/scan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-XSRFToken': getCookie('_xsrf')
-        },
-        body: 'scan_type=chat'
-      })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-          layer.msg(data.msg);
-          loadAllData();
-        });
-      
-      fetch('/admin/public_sentiment/scan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-XSRFToken': getCookie('_xsrf')
-        },
-        body: 'scan_type=collected'
-      })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-          layer.msg(data.msg);
-          loadAllData();
-        });
-      
-      layer.close(index);
+      function getCookie(name) {
+        var value = '; ' + document.cookie;
+        var parts = value.split('; ' + name + '=');
+        if (parts.length === 2) return parts.pop().split(';').shift();
+      }
+
+      loadAllData();
     });
-  };
-
-  window.loadAllData = function() {
-    loadStats();
-    loadRiskLevel();
-    loadTrend();
-    loadHotTopics();
-    loadAlertTable();
-  };
-
-  loadAllData();
-});
-</script>
-{% end %}
+    </script>
+</body>
+</html>

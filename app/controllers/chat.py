@@ -687,6 +687,28 @@ class ChatHandler(BaseHandler):
 		else:
 			ChatMessageRepository.create(session_id, "user", original_message, model_id=model_id_int, employee_id=employee_id_int)
 		
+		# 敏感词检测
+		from app.services.sensitive_word_service import SensitiveWordService
+		sensitive_matches = SensitiveWordService.scan_content(original_message)
+		if sensitive_matches:
+			warning_msg = "您的发言包含敏感词汇，请遵守社区规范"
+			self.write("data: " + json.dumps({"type": "system_warning", "content": warning_msg}) + "\n\n")
+			self.flush()
+			
+			username = self.current_user
+			SensitiveWordService.scan_and_create_alerts(
+				user_id,
+				username,
+				original_message,
+				"chat",
+				session_id,
+				f"会话ID:{session_id}"
+			)
+			
+			self.write("event: done\ndata: {}\n\n")
+			self.flush()
+			return
+		
 		# 确定使用的模型
 		model = None
 		if mentioned_employee and mentioned_employee["type"] == "llm":

@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+{% block body %}
+
+<div style="padding: 24px; background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%); min-height: 100%;">
+  <div class="layui-card" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <div class="layui-card-header" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 20px 24px; background: rgba(255,255,255,0.04);">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #165DFF 0%, #0E3BA1 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+            <i class="layui-icon layui-icon-set" style="color: white; font-size: 20px;"></i>
+          </div>
+          <div>
+            <h3 style="color: white; font-size: 18px; font-weight: 600; margin: 0;">系统设置</h3>
+            <p style="color: #64748B; font-size: 13px; margin: 4px 0 0;">System Settings</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="layui-card-body" style="padding: 24px;">
+      <div class="layui-tab" lay-filter="settingsTab" style="margin-top: 0;">
+        <ul class="layui-tab-title" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+          <li class="layui-this" style="color: #94A3B8; font-weight: 500;"><i class="layui-icon layui-icon-set" style="margin-right: 8px;"></i>基础设置</li>
+          <li style="color: #94A3B8; font-weight: 500;"><i class="layui-icon layui-icon-safety" style="margin-right: 8px;"></i>运行与安全</li>
+        </ul>
+        <div class="layui-tab-content" style="margin-top: 24px;">
+          <div class="layui-tab-item layui-show">
+            <div class="layui-form" lay-filter="basicForm">
+              <div class="layui-row layui-col-space20">
+                <div class="layui-col-md6">
+                  <div class="layui-form-item" style="margin-bottom: 20px;">
+                    <label class="layui-form-label" style="color: #94A3B8; width: 100px; font-weight: 500;">系统名称</label>
+                    <div class="layui-input-block">
+                      <div style="position: relative;">
+                        <i class="layui-icon layui-icon-console" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748B; font-size: 16px;"></i>
+                        <input type="text" name="system_name" value="{{ settings.get('system_name', '') }}" 
+                               class="layui-input" placeholder="请输入系统名称" 
+                               style="background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.15); padding-left: 36px; border-radius: 8px;">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item" style="margin-bottom: 20px;">
+                    <label class="layui-form-label" style="color: #94A3B8; width: 100px; font-weight: 500;">系统Logo</label>
+                    <div class="layui-input-block">
+                      <div class="layui-upload">
+                        <button type="button" class="layui-btn" style="background: linear-gradient(135deg, #165DFF 0%, #0E3BA1 100%); border: none; border-radius: 8px;">
+                          <i class="layui-icon layui-icon-upload"></i>上传Logo
+                        </button>
+                        <div class="layui-upload-list" style="margin-top: 12px;">
+                          {% if settings.get('logo_path') %}
+                          <img id="logoPreview" src="{{ settings.get('logo_path') }}" 
+                               style="width: 100px; height: 100px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+                          {% else %}
+                          <div id="logoPreview" style="width: 100px; height: 100px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: #64748B; background: rgba(255,255,255,0.05);">
+                            <i class="layui-icon layui-icon-image" style="font-size: 28px;"></i>
+                          </div>
+                          {% end %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="layui-row layui-col-space20">
+                <div class="layui-col-md6">
+                  <div class="layui-form-item" style="margin-bottom: 20px;">
+                    <label class="layui-form-label" style="color: #94A3B8; width: 100px; font-weight: 500;">默认时区</label>
+                    <div class="layui-input-block">
+                      <div style="position: relative;">
+                        <i class="layui-icon layui-icon-clock" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748B; font-size: 16px;"></i>
+                        <select name="timezone" class="layui-select" style="background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.15); padding-left: 36px; border-radius: 8px;">
+                          <option value="Asia/Shanghai" {% if settings.get('timezone') == 'Asia/Shanghai' %}selected{% end %}>GMT+8 北京</option>
+                          <option value="Asia/Tokyo" {% if settings.get('timezone') == 'Asia/Tokyo' %}selected{% end %}>GMT+9 东京</option>
+                          <option value="Asia/Singapore" {% if settings.get('timezone') == 'Asia/Singapore' %}selected{% end %}>GMT+8 新加坡</option>
+                          <option value="Europe/London" {% if settings.get('timezone') == 'Europe/London' %}selected{% end %}>GMT+0 伦敦</option>
+                          <option value="America/New_York" {% if settings.get('timezone') == 'America/New_York' %}selected{% end %}>GMT-5 纽约</option>
+                          <option value="UTC" {% if settings.get('timezone') == 'UTC' %}selected{% end %}>UTC 协调世界时</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item" style="margin-bottom: 20px;">
+                    <label class="layui-form-label" style="color: #94A3B8; width: 100px; font-weight: 500;">日期格式</label>
+                    <div class="layui-input-block">
+                      <div style="position: relative;">
+                        <i class="layui-icon layui-icon-calendar" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748B; font-size: 16px;"></i>
+                        <select name="date_format" class="layui-select" style="background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.15); padding-left: 36px; border-radius: 8px;">
+                          <option value="YYYY-MM-DD" {% if settings.get('date_format') == 'YYYY-MM-DD' %}selected{% end %}>YYYY-MM-DD</option>
+                          <option value="DD/MM/YYYY" {% if settings.get('date_format') == 'DD/MM/YYYY' %}selected{% end %}>DD/MM/YYYY</option>
+                          <option value="MM/DD/YYYY" {% if settings.get('date_format') == 'MM/DD/YYYY' %}selected{% end %}>MM/DD/YYYY</option>
+                          <option value="YYYY年MM月DD日" {% if settings.get('date_format') == 'YYYY年MM月DD日' %}selected{% end %}>YYYY年MM月DD日</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="layui-row layui-col-space20">
+                <div class="layui-col-md6">
+                  <div class="layui-form-item" style="margin-bottom: 20px;">
+                    <label class="layui-form-label" style="color: #94A3B8; width: 100px; font-weight: 500;">每页条数</label>
+                    <div class="layui-input-block">
+                      <div style="position: relative;">
+                        <i class="layui-icon layui-icon-list" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748B; font-size: 16px;"></i>
+                        <input type="number" name="page_size" value="{{ settings.get('page_size', 10) }}" 
+                               class="layui-input" placeholder="请输入每页条数" min="5" max="100"
+                               style="background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.15); padding-left: 36px; border-radius: 8px;">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="layui-form-item" style="margin-top: 30px;">
+                <div class="layui-input-block">
+                  <button class="layui-btn" onclick="saveSettings('basic')" style="background: linear-gradient(135deg, #165DFF 0%, #0E3BA1 100%); border: none; border-radius: 8px; padding: 10px 32px;">
+                    <i class="layui-icon layui-icon-save" style="margin-right: 8px;"></i>保存基础设置
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="layui-tab-item">
+            <div class="layui-form" lay-filter="securityForm">
+              <div class="layui-row layui-col-space20">
+                <div class="layui-col-md6">
+                  <div class="layui-form-item" style="margin-bottom: 20px;">
+                    <label class="layui-form-label" style="color: #94A3B8; width: 100px; font-weight: 500;">运行模式</label>
+                    <div class="layui-input-block">
+                      <div style="position: relative;">
+                        <i class="layui-icon layui-icon-engine" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748B; font-size: 16px;"></i>
+                        <select name="run_mode" class="layui-select" style="background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.15); padding-left: 36px; border-radius: 8px;">
+                          <option value="production" {% if settings.get('run_mode') == 'production' %}selected{% end %}>生产模式</option>
+                          <option value="development" {% if settings.get('run_mode') == 'development' %}selected{% end %}>开发模式</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item" style="margin-bottom: 20px;">
+                    <label class="layui-form-label" style="color: #94A3B8; width: 100px; font-weight: 500;">日志级别</label>
+                    <div class="layui-input-block">
+                      <div style="position: relative;">
+                        <i class="layui-icon layui-icon-file" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748B; font-size: 16px;"></i>
+                        <select name="log_level" class="layui-select" style="background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.15); padding-left: 36px; border-radius: 8px;">
+                          <option value="DEBUG" {% if settings.get('log_level') == 'DEBUG' %}selected{% end %}>DEBUG</option>
+                          <option value="INFO" {% if settings.get('log_level') == 'INFO' %}selected{% end %}>INFO</option>
+                          <option value="ERROR" {% if settings.get('log_level') == 'ERROR' %}selected{% end %}>ERROR</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="layui-row layui-col-space20">
+                <div class="layui-col-md6">
+                  <div class="layui-form-item" style="margin-bottom: 20px;">
+                    <label class="layui-form-label" style="color: #94A3B8; width: 100px; font-weight: 500;">会话超时时间</label>
+                    <div class="layui-input-block">
+                      <div style="position: relative; display: flex; align-items: center;">
+                        <i class="layui-icon layui-icon-timer" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748B; font-size: 16px; z-index: 1;"></i>
+                        <input type="number" name="session_timeout" value="{{ settings.get('session_timeout', 30) }}" 
+                               class="layui-input" placeholder="请输入超时时间" min="5" max="1440"
+                               style="background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.15); padding-left: 36px; border-radius: 8px; flex: 1;">
+                        <span style="margin-left: 12px; color: #94A3B8; font-size: 14px;">分钟</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="layui-col-md6">
+                  <div class="layui-form-item" style="margin-bottom: 20px;">
+                    <label class="layui-form-label" style="color: #94A3B8; width: 100px; font-weight: 500;">文件上传大小限制</label>
+                    <div class="layui-input-block">
+                      <div style="position: relative; display: flex; align-items: center;">
+                        <i class="layui-icon layui-icon-upload-circle" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748B; font-size: 16px; z-index: 1;"></i>
+                        <input type="number" name="max_upload_size" value="{{ settings.get('max_upload_size', 10) }}" 
+                               class="layui-input" placeholder="请输入大小限制" min="1" max="100"
+                               style="background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.15); padding-left: 36px; border-radius: 8px; flex: 1;">
+                        <span style="margin-left: 12px; color: #94A3B8; font-size: 14px;">MB</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="layui-form-item" style="margin-top: 30px;">
+                <div class="layui-input-block">
+                  <button class="layui-btn" onclick="saveSettings('security')" style="background: linear-gradient(135deg, #165DFF 0%, #0E3BA1 100%); border: none; border-radius: 8px; padding: 10px 32px;">
+                    <i class="layui-icon layui-icon-save" style="margin-right: 8px;"></i>保存运行与安全设置
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+layui.use(['element', 'form', 'upload', 'layer'], function() {
+  var element = layui.element;
+  var form = layui.form;
+  var upload = layui.upload;
+  var layer = layui.layer;
+
+  upload.render({
+    elem: '#logoUpload',
+    url: '/admin/system_settings/logo_upload',
+    accept: 'images',
+    size: 10240,
+    before: function(obj) {
+      obj.preview(function(index, file, result) {
+        document.getElementById('logoPreview').innerHTML = '<img src="' + result + '" style="width: 100px; height: 100px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">';
+      });
+    },
+    done: function(res) {
+      if (res.code === 0) {
+        layer.msg('Logo上传成功', {icon: 1});
+      } else {
+        layer.msg(res.msg, {icon: 2});
+      }
+    },
+    error: function() {
+      layer.msg('上传失败', {icon: 2});
+    }
+  });
+
+  window.saveSettings = function(type) {
+    var formData = form.val(type === 'basic' ? 'basicForm' : 'securityForm');
+    
+    if (type === 'security' && formData.run_mode === 'production' && formData.log_level !== 'ERROR') {
+      layer.confirm('生产模式建议使用ERROR级别日志，是否继续保存？', function(index) {
+        doSave(formData);
+        layer.close(index);
+      });
+    } else if (type === 'security' && formData.run_mode === 'production') {
+      layer.confirm('切换到生产模式后将隐藏报错信息，且需要重启服务生效。是否继续？', function(index) {
+        doSave(formData);
+        layer.close(index);
+      });
+    } else {
+      doSave(formData);
+    }
+  };
+
+  function doSave(data) {
+    fetch('/admin/system_settings/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-XSRFToken': getCookie('_xsrf')
+      },
+      credentials: 'include',
+      body: JSON.stringify(data)
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(res) {
+      if (res.code === 0) {
+        layer.msg('保存成功', {icon: 1});
+        setTimeout(function() {
+          location.reload();
+        }, 1000);
+      } else {
+        layer.msg(res.msg, {icon: 2});
+      }
+    })
+    .catch(function(err) {
+      layer.msg('保存失败', {icon: 2});
+    });
+  }
+
+  function getCookie(name) {
+    var value = '; ' + document.cookie;
+    var parts = value.split('; ' + name + '=');
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+});
+</script>
+{% end %}

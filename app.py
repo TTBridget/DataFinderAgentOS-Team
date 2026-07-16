@@ -15,6 +15,7 @@ from app.controllers.admin import (
 )
 from app.controllers.dashboard import DashboardHandler, DashboardDataHandler
 from app.controllers.public_sentiment import PublicSentimentHandler, PublicSentimentStatsHandler, PublicSentimentAlertsHandler, PublicSentimentAlertDetailHandler, PublicSentimentAlertActionHandler, PublicSentimentTrendHandler, PublicSentimentHotTopicsHandler, PublicSentimentRiskLevelHandler, PublicSentimentSensitiveWordsHandler, PublicSentimentScanHandler
+from app.controllers.system_settings import SystemSettingsHandler, SystemSettingsSaveHandler, SystemSettingsLogoUploadHandler
 from app.models.db import init_db
 
 
@@ -85,6 +86,10 @@ def webapp():
 		(r"/admin/public_sentiment/risk_level", PublicSentimentRiskLevelHandler),
 		(r"/admin/public_sentiment/sensitive_words", PublicSentimentSensitiveWordsHandler),
 		(r"/admin/public_sentiment/scan", PublicSentimentScanHandler),
+
+		(r"/admin/system_settings", SystemSettingsHandler),
+		(r"/admin/system_settings/save", SystemSettingsSaveHandler),
+		(r"/admin/system_settings/logo_upload", SystemSettingsLogoUploadHandler),
 	],
 	**settings
 	)
