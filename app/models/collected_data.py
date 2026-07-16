@@ -7,9 +7,23 @@ import urllib.parse
 import requests
 import re
 from bs4 import BeautifulSoup
+from ..utils.security import validate_http_url
 
 
 class CollectedDataRepository:
+	# 允许的 URL 协议白名单
+	_ALLOWED_URL_SCHEMES = ("http://", "https://")
+
+	@staticmethod
+	def _sanitize_url(url):
+		"""验证 URL 协议安全性，仅允许 http:// 和 https://，否则返回空字符串"""
+		if not url or not isinstance(url, str):
+			return ""
+		url = url.strip()
+		if not url.lower().startswith(CollectedDataRepository._ALLOWED_URL_SCHEMES):
+			return ""
+		return url
+
 	@staticmethod
 	def get_all(page=1, per_page=12, keyword="", source_ids=None):
 		offset = (page - 1) * per_page
@@ -131,11 +145,11 @@ class CollectedDataRepository:
 					try:
 						data = json.loads(c[len('s-data:'):])
 						title = data.get('title', '').replace('<em>', '').replace('</em>', '')
-						link_url = data.get('titleUrl', '')
+						link_url = CollectedDataRepository._sanitize_url(data.get('titleUrl', ''))
 						content = data.get('summary', '').replace('<em>', '').replace('</em>', '')
 						
 						if not link_url and 'url' in data:
-							link_url = data['url']
+							link_url = CollectedDataRepository._sanitize_url(data['url'])
 						
 						if title and link_url:
 							data_id = CollectedDataRepository.create(
@@ -162,7 +176,7 @@ class CollectedDataRepository:
 				continue
 			
 			title = link_tag.get_text(strip=True)
-			link_url = link_tag["href"]
+			link_url = CollectedDataRepository._sanitize_url(link_tag["href"])
 			
 			abstract_tag = (
 				container.find(class_="content-right_8Zs40")
@@ -177,7 +191,7 @@ class CollectedDataRepository:
 					try:
 						data = json.loads(c[len('s-data:'):])
 						title = data.get('title', title).replace('<em>', '').replace('</em>', '')
-						link_url = data.get('titleUrl', link_url)
+						link_url = CollectedDataRepository._sanitize_url(data.get('titleUrl', link_url))
 						content = data.get('summary', content).replace('<em>', '').replace('</em>', '')
 						break
 					except Exception:
@@ -211,7 +225,7 @@ class CollectedDataRepository:
 					try:
 						data = json.loads(c[len('s-data:'):])
 						title = data.get('title', '').replace('<em>', '').replace('</em>', '')
-						link_url = data.get('titleUrl', '')
+						link_url = CollectedDataRepository._sanitize_url(data.get('titleUrl', ''))
 						content = data.get('summary', '').replace('<em>', '').replace('</em>', '')
 						source_name = data.get('sourceName', data.get('source', ''))
 						publish_time = data.get('dispTime', '')
@@ -249,6 +263,7 @@ class CollectedDataRepository:
 			
 			title = link_tag.get_text(strip=True)
 			link_url = urllib.parse.urljoin("https://s.weibo.com", link_tag.get("href", ""))
+			link_url = CollectedDataRepository._sanitize_url(link_url)
 			
 			heat_tag = row.find("span")
 			heat = heat_tag.get_text(strip=True) if heat_tag else ""
@@ -324,6 +339,7 @@ class CollectedDataRepository:
 		
 		# 构建 URL
 		link_url = f"https://baike.baidu.com/item/{urllib.parse.quote(keyword)}"
+		link_url = CollectedDataRepository._sanitize_url(link_url)
 		
 		if title:
 			data_id = CollectedDataRepository.create(
@@ -359,7 +375,7 @@ class CollectedDataRepository:
 			
 			time_tag = card.find("a", href=re.compile(r"weibo.com.*/\d+"))
 			publish_time = time_tag.get_text(strip=True) if time_tag else ""
-			link_url = time_tag.get("href", "") if time_tag else ""
+			link_url = CollectedDataRepository._sanitize_url(time_tag.get("href", "") if time_tag else "")
 			
 			if content:
 				title = content[:60] + "..." if len(content) > 60 else content
@@ -382,9 +398,14 @@ class CollectedDataRepository:
 				source = dict(source)
 			
 			url = CollectedDataRepository._build_request_url(source, keyword, page)
+			
+			# SSRF 防护：采集前校验 URL 合法性（防御纵深）
+			if not validate_http_url(url):
+				return {"success": False, "error": f"数据源 URL 不合法: {url}"}
+			
 			headers = CollectedDataRepository._prepare_headers(source)
 			
-			response = requests.get(url, headers=headers, timeout=30)
+			response = requests.get(url, headers=headers, timeout=30, allow_redirects=False)
 			response.encoding = "utf-8"
 			
 			name = source.get("name", "")

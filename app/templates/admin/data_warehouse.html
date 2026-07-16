@@ -48,7 +48,11 @@
                         </td>
                         <td>{{ item['created_at'] }}</td>
                         <td>
-                            <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="viewData({{ item['id'] }}, '{{ escape(item['title']) }}', '{{ escape(item['content']) }}')">查看</button>
+                            <button class="layui-btn layui-btn-xs layui-btn-normal"
+                                    data-id="{{ item['id'] }}"
+                                    data-title="{{ escape(item['title']) }}"
+                                    data-content="{{ escape(item['content']) }}"
+                                    onclick="viewData(this)">查看</button>
                             
                             {% if item['is_deep_collected'] == 0 %}
                             <button class="layui-btn layui-btn-xs" onclick="openDeepCollectPanel({{ item['id'] }})">深度采集</button>
@@ -161,6 +165,16 @@
 </div>
 
 <script>
+// HTML 实体转义：防止爬取数据中的恶意脚本通过 innerHTML 执行
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+}
 var $, layer, form, laypage;
 layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
     laypage = lp;
@@ -208,7 +222,10 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
         window.location.href = '/admin/data_warehouse?page=1&search=' + encodeURIComponent(search);
     };
     
-    window.viewData = function(id, title, content) {
+    window.viewData = function(button) {
+        var id = button.getAttribute('data-id');
+        var title = button.getAttribute('data-title');
+        var content = button.getAttribute('data-content');
         layer.open({
             type: 1,
             title: title,
@@ -435,7 +452,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                                step.status === 'failed' ? 'layui-bg-red' : 'layui-bg-blue';
                 stepsHtml += '<li style="margin-bottom: 5px;"><span class="layui-badge ' + stepClass + '" style="margin-right: 10px;">' + 
                              (step.status === 'completed' ? '✓' : step.status === 'failed' ? '✗' : '●') + 
-                             '</span>' + step.name + '</li>';
+                             '</span>' + escapeHtml(step.name) + '</li>';
             });
             document.getElementById('stepsList').innerHTML = stepsHtml;
         }
@@ -446,7 +463,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
             logs.forEach(function(log){
                 var logColor = log.level === 'error' ? 'color: #FF5722;' : 
                                log.level === 'warning' ? 'color: #FA8C16;' : '';
-                logsHtml += '<div style="' + logColor + '">' + log.time + ' - ' + log.message + '</div>';
+                logsHtml += '<div style="' + logColor + '">' + escapeHtml(log.time) + ' - ' + escapeHtml(log.message) + '</div>';
             });
             document.getElementById('logsContainer').innerHTML = logsHtml;
             document.getElementById('logsContainer').scrollTop = document.getElementById('logsContainer').scrollHeight;
@@ -454,13 +471,13 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
         
         if(task.result_data) {
             var resultData = JSON.parse(task.result_data);
-            var resultHtml = '<div><strong>标题：</strong>' + resultData.title + '</div>' +
+            var resultHtml = '<div><strong>标题：</strong>' + escapeHtml(resultData.title) + '</div>' +
                              '<div style="margin-top: 10px;"><strong>字数：</strong>' + resultData.word_count + ' 字</div>' +
                              '<div style="margin-top: 10px;"><strong>内容预览：</strong></div>' +
                              '<div style="margin-top: 5px; padding: 10px; background: white; border-radius: 4px; max-height: 200px; overflow-y: auto; font-size: 13px;">' + 
-                             (resultData.content || '无内容') + '</div>';
+                             escapeHtml(resultData.content || '无内容') + '</div>';
             if(resultData.warning) {
-                resultHtml += '<div style="margin-top: 10px; padding: 10px; background: #fff7e6; border-radius: 4px; color: #FA8C16;">' + resultData.warning + '</div>';
+                resultHtml += '<div style="margin-top: 10px; padding: 10px; background: #fff7e6; border-radius: 4px; color: #FA8C16;">' + escapeHtml(resultData.warning) + '</div>';
             }
             document.getElementById('resultContent').innerHTML = resultHtml;
             document.getElementById('resultPanel').style.display = 'block';
@@ -489,7 +506,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
             if(data.code === 0) {
                 var task = data.data;
                 var content = '<div class="layui-form">';
-                content += '<div class="layui-form-item"><label class="layui-form-label">采集员工</label><div class="layui-input-block"><span class="layui-form-mid">' + (task.employee_name || '-') + '</span></div></div>';
+                content += '<div class="layui-form-item"><label class="layui-form-label">采集员工</label><div class="layui-input-block"><span class="layui-form-mid">' + escapeHtml(task.employee_name || '-') + '</span></div></div>';
                 content += '<div class="layui-form-item"><label class="layui-form-label">采集状态</label><div class="layui-input-block"><span class="layui-badge ' + 
                            (task.status === 'completed' ? 'layui-bg-green' : task.status === 'failed' ? 'layui-bg-red' : 'layui-bg-blue') + '">' + 
                            task.status + '</span></div></div>';
@@ -497,9 +514,9 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                 
                 if(task.result_data) {
                     var resultData = JSON.parse(task.result_data);
-                    content += '<div class="layui-form-item"><label class="layui-form-label">标题</label><div class="layui-input-block"><span class="layui-form-mid">' + resultData.title + '</span></div></div>';
+                    content += '<div class="layui-form-item"><label class="layui-form-label">标题</label><div class="layui-input-block"><span class="layui-form-mid">' + escapeHtml(resultData.title) + '</span></div></div>';
                     content += '<div class="layui-form-item"><label class="layui-form-label">字数统计</label><div class="layui-input-block"><span class="layui-form-mid">' + resultData.word_count + ' 字</span></div></div>';
-                    content += '<div class="layui-form-item"><label class="layui-form-label">详细内容</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-size: 13px;">' + (resultData.content || '无内容') + '</pre></div></div>';
+                    content += '<div class="layui-form-item"><label class="layui-form-label">详细内容</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-size: 13px;">' + escapeHtml(resultData.content || '无内容') + '</pre></div></div>';
                 }
                 
                 content += '</div>';

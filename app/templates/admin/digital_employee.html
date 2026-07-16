@@ -246,6 +246,16 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
     form = fm;
     $ = jq;
 
+    // HTML 实体转义：防止从数据库读取的数据中的恶意脚本通过 innerHTML 执行
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
     laypage.render({
         elem: 'pagination',
         count: {{ total }},
@@ -317,6 +327,11 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
         $form.find('#apiMethod').val(isEdit ? (emp.api_method || 'GET') : 'GET');
         $form.find('#apiHeaders').val(isEdit ? (emp.api_headers || '') : '');
         $form.find('#apiParams').val(isEdit ? (emp.api_params || '') : '');
+        // 编辑时凭据已脱敏，提示管理员需重新输入才能更新
+        if (isEdit) {
+            $form.find('#apiHeaders').attr('placeholder', '已存储的凭证已脱敏，如需修改请重新输入');
+            $form.find('#apiParams').attr('placeholder', '已存储的凭证已脱敏，如需修改请重新输入');
+        }
         $form.find('#cardType').val(isEdit ? (emp.card_type || '') : '');
         $form.find('#sortOrder').val(isEdit ? (emp.sort_order || 0) : '0');
         $form.find('#ndFiles').val('');
@@ -480,30 +495,30 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
             if(res.code == 0){
                 var emp = res.data;
                 var html = '<div class="layui-form" style="padding: 20px;">';
-                html += '<div class="layui-form-item"><label class="layui-form-label">员工名称</label><div class="layui-input-block"><span class="layui-form-mid">@' + emp.name + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label">员工名称</label><div class="layui-input-block"><span class="layui-form-mid">@' + escapeHtml(emp.name) + '</span></div></div>';
                 html += '<div class="layui-form-item"><label class="layui-form-label">员工类型</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.type == 'llm' ? 'LLM 员工' : 'API 员工') + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label">描述</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.description || '-') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label">描述</label><div class="layui-input-block"><span class="layui-form-mid">' + escapeHtml(emp.description || '-') + '</span></div></div>';
                 
                 if(emp.type == 'llm'){
-                    html += '<div class="layui-form-item"><label class="layui-form-label">关联模型</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.model_name || '系统默认模型') + '</span></div></div>';
-                    html += '<div class="layui-form-item"><label class="layui-form-label">System Prompt</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">' + (emp.system_prompt || '-') + '</pre></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">关联模型</label><div class="layui-input-block"><span class="layui-form-mid">' + escapeHtml(emp.model_name || '系统默认模型') + '</span></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">System Prompt</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">' + escapeHtml(emp.system_prompt || '-') + '</pre></div></div>';
                     var ndFiles = emp.nd_files && emp.nd_files.length > 0 ? emp.nd_files.join('， ') : '-';
-                    html += '<div class="layui-form-item"><label class="layui-form-label">Prompt 文件</label><div class="layui-input-block"><span class="layui-form-mid">' + ndFiles + '</span></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">Prompt 文件</label><div class="layui-input-block"><span class="layui-form-mid">' + escapeHtml(ndFiles) + '</span></div></div>';
                     html += '<div class="layui-form-item"><label class="layui-form-label">功能增强</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.use_skills == 1 ? '✓ 启用技能 ' : '') + (emp.use_crawl4ai == 1 ? '✓ 启用网页抓取' : '') + '</span></div></div>';
                 } else {
-                    html += '<div class="layui-form-item"><label class="layui-form-label">关联接口</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.interface_name || '无') + '</span></div></div>';
-                    html += '<div class="layui-form-item"><label class="layui-form-label">API URL</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.api_url || '-') + '</span></div></div>';
-                    html += '<div class="layui-form-item"><label class="layui-form-label">请求方法</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.api_method || 'GET') + '</span></div></div>';
-                    html += '<div class="layui-form-item"><label class="layui-form-label">请求头</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">' + (emp.api_headers || '-') + '</pre></div></div>';
-                    html += '<div class="layui-form-item"><label class="layui-form-label">请求参数</label><div class="layui-input-block"><pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">' + (emp.api_params || '-') + '</pre></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">关联接口</label><div class="layui-input-block"><span class="layui-form-mid">' + escapeHtml(emp.interface_name || '无') + '</span></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">API URL</label><div class="layui-input-block"><span class="layui-form-mid">' + escapeHtml(emp.api_url || '-') + '</span></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">请求方法</label><div class="layui-input-block"><span class="layui-form-mid">' + escapeHtml(emp.api_method || 'GET') + '</span></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">请求头</label><div class="layui-input-block"><span class="layui-form-mid" style="color: #999;">（已脱敏，出于安全原因不显示）</span></div></div>';
+                    html += '<div class="layui-form-item"><label class="layui-form-label">请求参数</label><div class="layui-input-block"><span class="layui-form-mid" style="color: #999;">（已脱敏，出于安全原因不显示）</span></div></div>';
                     var cardTypeMap = {'': '无（纯文本）', 'weather': '天气卡片', 'json': 'JSON 数据卡片', 'table': '表格卡片', 'html': 'HTML 卡片'};
                     html += '<div class="layui-form-item"><label class="layui-form-label">卡片类型</label><div class="layui-input-block"><span class="layui-form-mid">' + (cardTypeMap[emp.card_type] || '无（纯文本）') + '</span></div></div>';
                 }
                 
                 html += '<div class="layui-form-item"><label class="layui-form-label">状态</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.is_enabled == 1 ? '<span style="color: green;">启用</span>' : '<span style="color: #999;">禁用</span>') + '</span></div></div>';
                 html += '<div class="layui-form-item"><label class="layui-form-label">排序</label><div class="layui-input-block"><span class="layui-form-mid">' + emp.sort_order + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label">创建时间</label><div class="layui-input-block"><span class="layui-form-mid">' + emp.created_at + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label">更新时间</label><div class="layui-input-block"><span class="layui-form-mid">' + (emp.updated_at || '-') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label">创建时间</label><div class="layui-input-block"><span class="layui-form-mid">' + escapeHtml(emp.created_at) + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label">更新时间</label><div class="layui-input-block"><span class="layui-form-mid">' + escapeHtml(emp.updated_at || '-') + '</span></div></div>';
                 html += '</div>';
                 
                 layer.open({

@@ -36,6 +36,16 @@
     });
   }
 
+  function escapeHtml(text) {
+    if (!text) return "";
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;");
+  }
+
   function createModal(title, bodyHtml) {
     var backdrop = document.createElement("div");
     backdrop.className = "mm-modal-backdrop";
@@ -359,7 +369,7 @@
   async function openGesturePanel() {
     var modal = createModal("手势与数字员工交互",
       '<div class="mm-form-row"><label>剪刀手查询天气的城市</label><input id="mmGestureCity" value="' +
-      (localStorage.getItem("mm_weather_city") || "北京") + '"></div>' +
+      escapeHtml(localStorage.getItem("mm_weather_city") || "北京") + '"></div>' +
       '<div class="mm-video-wrap"><video id="mmGestureVideo" autoplay muted playsinline></video></div>' +
       '<div class="mm-status" id="mmGestureStatus">正在启动手势识别……</div>' +
       '<div class="mm-gesture-hint"><div>✌️ 剪刀手<br>查天气</div><div>✊ 握拳<br>随机音乐</div><div>🖐️ 手掌<br>热点新闻</div></div>' +

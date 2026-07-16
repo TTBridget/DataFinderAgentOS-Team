@@ -7,8 +7,13 @@ admin.py主要实现与数据库表有关的操作：新增/修改/删除/查询
 import hashlib
 import secrets
 import sqlite3
+import datetime
 
 from app.models.db import get_connection
+
+# 暴力破解防护配置
+MAX_FAILED_ATTEMPTS = 5         # 连续失败次数阈值
+LOCK_DURATION_MINUTES = 15      # 锁定时长（分钟）
 
 def _hash_password(password:str,salt:bytes) -> str:
 	#将明文相间+salt计算为稳定的hash
@@ -52,16 +57,69 @@ class AdminRepository:
 		return row
 
 	@staticmethod
-	def verify_admin(username:str,password:str) -> bool:
+	def verify_admin(username:str,password:str) -> tuple:
+		"""
+		验证管理员凭证，返回 (valid: bool, reason: str)
+		reason 可能为：'ok' | 'not_found' | 'locked' | 'wrong_password'
+		调用方应统一返回"用户名或密码不正确"，不区分具体原因。
+		"""
 		row = AdminRepository.get_admin_by_username(username)
-		#先看用户名是否存在，如果用户名不存在，则后面验证没有必要
 		if not row:
-			return False
-		# 检查管理员是否被禁用（添加兼容性处理）
+			return (False, "not_found")
+
+		# 检查管理员是否被禁用
 		if "is_disabled" in row and row["is_disabled"] == 1:
-			return False
+			return (False, "not_found")  # 对外不暴露禁用状态
+
+		# 检查账户是否被锁定
+		lock_until = row["lock_until"] if "lock_until" in row.keys() else None
+		if lock_until:
+			try:
+				lock_time = datetime.datetime.strptime(lock_until, "%Y-%m-%d %H:%M:%S")
+				if lock_time > datetime.datetime.now():
+					return (False, "locked")
+			except (ValueError, TypeError):
+				pass  # 格式异常时忽略锁定
+
 		salt = bytes.fromhex(row["salt"])
-		return _hash_password(password,salt) == row["password_hash"]
+		password_match = _hash_password(password, salt) == row["password_hash"]
+
+		if password_match:
+			# 登录成功：重置失败计数
+			AdminRepository._reset_failed_attempts(username)
+			return (True, "ok")
+		else:
+			# 登录失败：递增失败计数并检查是否需锁定
+			AdminRepository._record_failed_attempt(username)
+			return (False, "wrong_password")
+
+	@staticmethod
+	def _record_failed_attempt(username: str):
+		"""记录一次失败尝试，超过阈值则锁定账户"""
+		with get_connection() as conn:
+			conn.execute(
+				"UPDATE admins SET failed_attempts = COALESCE(failed_attempts, 0) + 1 WHERE username = ?",
+				(username,)
+			)
+			row = conn.execute(
+				"SELECT failed_attempts FROM admins WHERE username = ?",
+				(username,)
+			).fetchone()
+			if row and row["failed_attempts"] >= MAX_FAILED_ATTEMPTS:
+				lock_until = (datetime.datetime.now() + datetime.timedelta(minutes=LOCK_DURATION_MINUTES)).strftime("%Y-%m-%d %H:%M:%S")
+				conn.execute(
+					"UPDATE admins SET lock_until = ? WHERE username = ?",
+					(lock_until, username)
+				)
+
+	@staticmethod
+	def _reset_failed_attempts(username: str):
+		"""重置失败计数和锁定状态"""
+		with get_connection() as conn:
+			conn.execute(
+				"UPDATE admins SET failed_attempts = 0, lock_until = NULL WHERE username = ?",
+				(username,)
+			)
 	
 	@staticmethod
 	def get_all_admins(page=1, page_size=20, search_keyword=None):
@@ -143,4 +201,25 @@ class AdminRepository:
 				(is_disabled, admin_id)
 			)
 		return True
+
+	@staticmethod
+	def get_admin_function_codes(username: str):
+		"""获取管理员角色的所有功能代码（用于 RBAC 权限检查）"""
+		with get_connection() as conn:
+			rows = conn.execute(
+				"""
+				SELECT f.code FROM functions f
+				INNER JOIN role_functions rf ON f.id = rf.function_id
+				INNER JOIN admins a ON a.role_id = rf.role_id
+				WHERE a.username = ? AND f.is_disabled = 0
+				""",
+				(username,)
+			).fetchall()
+		return {row["code"] for row in rows}
+
+	@staticmethod
+	def is_super_admin(username: str) -> bool:
+		"""判断管理员是否为超级管理员"""
+		row = AdminRepository.get_admin_by_username(username)
+		return row is not None and row["is_super_admin"] == 1
 

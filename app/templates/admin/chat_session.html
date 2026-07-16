@@ -226,15 +226,20 @@ layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
         }, function(res){
             if(res.code == 0){
                 var s = res.data;
+                // HTML 转义函数：防止 XSS
+                var esc = function(text) {
+                    if (!text && text !== 0) return '';
+                    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                };
                 var html = '<div class="layui-form" style="padding: 20px; color: #e2e8f0;">';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">会话 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + s.id + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">标题</label><div class="layui-input-block"><span class="layui-form-mid">' + (s.title || '未命名') + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">用户 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + s.user_id + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">模型 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + (s.model_id || '-') + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">数字员工 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + (s.employee_id || '-') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">会话 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + esc(s.id) + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">标题</label><div class="layui-input-block"><span class="layui-form-mid">' + esc(s.title || '未命名') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">用户 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + esc(s.user_id) + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">模型 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + esc(s.model_id || '-') + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">数字员工 ID</label><div class="layui-input-block"><span class="layui-form-mid">' + esc(s.employee_id || '-') + '</span></div></div>';
                 html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">置顶</label><div class="layui-input-block"><span class="layui-form-mid">' + (s.is_pinned == 1 ? '是' : '否') + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">创建时间</label><div class="layui-input-block"><span class="layui-form-mid">' + s.created_at + '</span></div></div>';
-                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">更新时间</label><div class="layui-input-block"><span class="layui-form-mid">' + s.updated_at + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">创建时间</label><div class="layui-input-block"><span class="layui-form-mid">' + esc(s.created_at) + '</span></div></div>';
+                html += '<div class="layui-form-item"><label class="layui-form-label" style="color: #94a3b8;">更新时间</label><div class="layui-input-block"><span class="layui-form-mid">' + esc(s.updated_at) + '</span></div></div>';
                 html += '</div>';
                 layer.open({
                     type: 1,

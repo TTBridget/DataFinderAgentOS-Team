@@ -723,17 +723,24 @@ function setDefault(id){
 }
 
 // 对话测试功能
+function escapeHtml(text){
+    if(!text) return '';
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function openChat(id, name){
     currentChatModelId = id;
     var $ = layui.jquery;
     
-    // 清空历史记录
-    $('#chatMessages').html('<div class="msg-bubble msg-ai">你好！我是 ' + name + '，请输入问题开始测试。</div>');
+    // 清空历史记录（使用 .text() 避免 XSS）
+    $('#chatMessages').html('<div class="msg-bubble msg-ai"></div>')
+                       .find('.msg-bubble')
+                       .text('你好！我是 ' + name + '，请输入问题开始测试。');
     $('#chatInput').val('');
     
     layui.layer.open({
         type: 1,
-        title: '对话测试: ' + name,
+        title: '对话测试: ' + $('<div>').text(name).html(),
         content: $('#chatModal'),
         area: ['600px', '600px'],
         skin: 'layui-layer-molv',
@@ -749,7 +756,7 @@ function sendMessage() {
     if (!msg) return;
     
     // 添加用户消息
-    appendMessage(msg, 'user');
+    appendMessage(escapeHtml(msg), 'user');
     input.val('');
     
     // 准备 AI 消息框
@@ -772,7 +779,9 @@ function sendMessage() {
         try {
             var data = JSON.parse(event.data);
             if (data.error) {
-                aiMsgBox.html('<span style="color: #ef4444;">' + data.error + '</span>');
+                aiMsgBox.html('<span style="color: #ef4444;"></span>')
+                         .find('span')
+                         .text(data.error);
                 source.close();
                 return;
             }

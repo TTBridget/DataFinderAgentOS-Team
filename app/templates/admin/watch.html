@@ -245,7 +245,7 @@
                             <input type="checkbox" name="dataItem" lay-skin="primary" class="data-checkbox" 
                                 data-source-id="{{ item['source_id'] }}"
                                 data-title="{{ escape(item['title']) }}"
-                                data-url="{{ item['url'] }}"
+                                data-url="{{ safe_url(item['url']) }}"
                                 data-content="{{ escape(item['content']) }}"
                                 data-publish-time="{{ item['publish_time'] }}"
                                 data-source-name="{{ item['source_name'] }}"
@@ -263,7 +263,7 @@
                         </div>
                         <div class="result-footer">
                             {% if item['url'] %}
-                            <a href="{{ item['url'] }}" target="_blank" class="layui-btn layui-btn-xs layui-btn-normal layui-bg-blue" style="border-radius: 4px;">阅读原文 <i class="layui-icon layui-icon-right"></i></a>
+                            <a href="{{ safe_url(item['url']) }}" target="_blank" class="layui-btn layui-btn-xs layui-btn-normal layui-bg-blue" style="border-radius: 4px;">阅读原文 <i class="layui-icon layui-icon-right"></i></a>
                             {% end %}
                         </div>
                     </div>

@@ -22,7 +22,7 @@ from app.models.user import UserRepository
 from app.models.skill import SkillRepository, SkillEngine
 from app.models.data_warehouse import DataWarehouseRepository
 from app.services.intent_engine import recognize_intent, execute_database_query, generate_chart_config
-from app.utils.security import safe_int, validate_llm_base_url, validate_employee_api_url
+from app.utils.security import safe_int, validate_llm_base_url, validate_employee_api_url, validate_http_url
 
 
 def _get_user_id(handler):
@@ -143,18 +143,27 @@ def _parse_weather_card(response_text, user_query=""):
 		desc_en = current.get("weatherDesc", [{}])[0].get("value", "") if current.get("weatherDesc") else ""
 		description = desc_zh if desc_zh else _translate_weather_desc(desc_en)
 
+		# XSS 纵深防御：数值字段剥离 HTML 元字符
+		import re
+		def _safe_num(val, default="--"):
+			if val is None:
+				return default
+			# 仅保留数字、小数点、负号，防止 HTML/JS 注入
+			cleaned = re.sub(r'[^\d.\-]', '', str(val))
+			return cleaned if cleaned else default
+
 		return {
 			"city": city,
-			"temperature": current.get("temp_C", "--"),
-			"feels_like": current.get("FeelsLikeC", "--"),
+			"temperature": _safe_num(current.get("temp_C")),
+			"feels_like": _safe_num(current.get("FeelsLikeC")),
 			"description": description,
 			"description_en": desc_en,
-			"humidity": current.get("humidity", "--"),
-			"wind_speed": current.get("windspeedKmph", "--"),
+			"humidity": _safe_num(current.get("humidity")),
+			"wind_speed": _safe_num(current.get("windspeedKmph")),
 			"wind_dir": current.get("winddir16Point", ""),
-			"pressure": current.get("pressure", "--"),
-			"visibility": current.get("visibility", "--"),
-			"uv_index": current.get("uvIndex", "--"),
+			"pressure": _safe_num(current.get("pressure")),
+			"visibility": _safe_num(current.get("visibility")),
+			"uv_index": _safe_num(current.get("uvIndex")),
 			"observation_time": current.get("observation_time", "")
 		}
 	except Exception:
@@ -248,6 +257,10 @@ def _fallback_news_card():
 
 async def _deep_collect_async(url):
 	"""使用 crawl4ai 进行深度采集（供 @采集专员 在前台调用）"""
+	# SSRF 防护：校验 URL 合法性
+	if not validate_http_url(url):
+		return {'title': None, 'content': None, 'success': False, 'error': f'URL 不合法或存在 SSRF 风险: {url}'}
+
 	from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 	from crawl4ai.content_filter_strategy import PruningContentFilter
 	from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
@@ -1100,6 +1113,13 @@ class ChatHandler(BaseHandler):
 			urls = re.findall(r'https?://[^\s<>"\']+', message)
 			if urls:
 				target_url = urls[0]
+				# SSRF 防护：采集前校验 URL 合法性（拒绝私有 IP / 非 HTTP 协议）
+				if not validate_http_url(target_url):
+					self.write("data: " + json.dumps({"error": f"URL 不合法或禁止访问内网地址: {target_url}"}) + "\n\n")
+					self.flush()
+					self.write("event: done\ndata: {}\n\n")
+					self.flush()
+					return
 				self.write("data: " + json.dumps({"content": f"正在采集 {target_url} 的详细内容，请稍候..."}) + "\n\n")
 				self.flush()
 				try:
