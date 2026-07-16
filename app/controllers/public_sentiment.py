@@ -29,7 +29,10 @@ class PublicSentimentStatsHandler(AdminBaseHandler):
         time_range = self.get_argument("time_range", "24h")
         now = datetime.datetime.now()
         
-        if time_range == "24h":
+        if time_range == "1h":
+            start_time = (now - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+            end_time = now.strftime('%Y-%m-%d %H:%M:%S')
+        elif time_range == "24h":
             start_time = (now - datetime.timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
             end_time = now.strftime('%Y-%m-%d %H:%M:%S')
         elif time_range == "7d":
@@ -42,9 +45,20 @@ class PublicSentimentStatsHandler(AdminBaseHandler):
         stats = AlertRepository.get_stats(start_time, end_time)
         
         with self.application.settings.get("db_connection", None) or __import__('app.models.db').models.db.get_connection() as conn:
-            session_count = conn.execute("SELECT COUNT(*) as cnt FROM chat_sessions").fetchone()["cnt"]
-            message_count = conn.execute("SELECT COUNT(*) as cnt FROM chat_messages").fetchone()["cnt"]
-            collected_count = conn.execute("SELECT COUNT(*) as cnt FROM collected_data").fetchone()["cnt"]
+            session_query = "SELECT COUNT(*) as cnt FROM chat_sessions"
+            message_query = "SELECT COUNT(*) as cnt FROM chat_messages"
+            collected_query = "SELECT COUNT(*) as cnt FROM collected_data"
+            params = []
+            
+            if start_time and end_time:
+                session_query += " WHERE created_at >= ? AND created_at <= ?"
+                message_query += " WHERE created_at >= ? AND created_at <= ?"
+                collected_query += " WHERE created_at >= ? AND created_at <= ?"
+                params = [start_time, end_time]
+            
+            session_count = conn.execute(session_query, params).fetchone()["cnt"]
+            message_count = conn.execute(message_query, params).fetchone()["cnt"]
+            collected_count = conn.execute(collected_query, params).fetchone()["cnt"]
         
         self.write({
             "code": 0,
@@ -72,13 +86,23 @@ class PublicSentimentAlertsHandler(AdminBaseHandler):
         start_time = ""
         end_time = ""
         
-        if time_range == "24h":
+        if time_range == "1h":
+            start_time = (now - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+            end_time = now.strftime('%Y-%m-%d %H:%M:%S')
+        elif time_range == "24h":
             start_time = (now - datetime.timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+            end_time = now.strftime('%Y-%m-%d %H:%M:%S')
         elif time_range == "7d":
             start_time = (now - datetime.timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
+            end_time = now.strftime('%Y-%m-%d %H:%M:%S')
         
         result = AlertRepository.get_alerts(page, page_size, status, start_time, end_time)
-        self.write({"code": 0, "data": result})
+        self.write({
+            "code": 0,
+            "msg": "",
+            "count": result["total"],
+            "data": result["items"]
+        })
 
 
 class PublicSentimentAlertDetailHandler(AdminBaseHandler):
@@ -98,8 +122,13 @@ class PublicSentimentAlertActionHandler(AdminBaseHandler):
     
     @authenticated
     def post(self):
-        action = self.get_body_argument("action", "")
-        alert_id = self.get_body_argument("alert_id", "")
+        try:
+            body = json.loads(self.request.body) if self.request.body else {}
+            action = body.get("action", "")
+            alert_id = body.get("alert_id", "")
+        except:
+            action = self.get_body_argument("action", "")
+            alert_id = self.get_body_argument("alert_id", "")
         
         if action == "mark_handled":
             AlertRepository.update_status(alert_id, "handled")
@@ -134,7 +163,11 @@ class PublicSentimentTrendHandler(AdminBaseHandler):
         time_range = self.get_argument("time_range", "24h")
         now = datetime.datetime.now()
         
-        if time_range == "24h":
+        if time_range == "1h":
+            start_time = (now - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+            end_time = now.strftime('%Y-%m-%d %H:%M:%S')
+            data = AlertRepository.get_trend_by_hour(start_time, end_time)
+        elif time_range == "24h":
             start_time = (now - datetime.timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
             end_time = now.strftime('%Y-%m-%d %H:%M:%S')
             data = AlertRepository.get_trend_by_hour(start_time, end_time)
@@ -154,7 +187,10 @@ class PublicSentimentHotTopicsHandler(AdminBaseHandler):
         time_range = self.get_argument("time_range", "24h")
         now = datetime.datetime.now()
         
-        if time_range == "24h":
+        if time_range == "1h":
+            start_time = (now - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+            end_time = now.strftime('%Y-%m-%d %H:%M:%S')
+        elif time_range == "24h":
             start_time = (now - datetime.timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
             end_time = now.strftime('%Y-%m-%d %H:%M:%S')
         else:
@@ -237,7 +273,11 @@ class PublicSentimentScanHandler(AdminBaseHandler):
     
     @authenticated
     def post(self):
-        scan_type = self.get_body_argument("scan_type", "")
+        try:
+            body = json.loads(self.request.body) if self.request.body else {}
+            scan_type = body.get("scan_type", "")
+        except:
+            scan_type = self.get_body_argument("scan_type", "")
         count = 0
         
         if scan_type == "chat":

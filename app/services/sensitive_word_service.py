@@ -85,7 +85,7 @@ class SensitiveWordService:
     
     @staticmethod
     def scan_and_create_alerts(user_id, user_name, content, content_type, source_id, source_name):
-        """扫描内容并创建预警记录"""
+        """扫描内容并创建预警记录（去重）"""
         matches = SensitiveWordService.scan_content(content)
         if not matches:
             return []
@@ -93,19 +93,28 @@ class SensitiveWordService:
         alerts = []
         with get_connection() as conn:
             for match in matches:
-                cursor = conn.execute(
+                exists = conn.execute(
                     """
-                    INSERT INTO alerts (user_id, user_name, sensitive_word, content, 
-                                       content_type, source_id, source_name)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    SELECT id FROM alerts WHERE user_id = ? AND sensitive_word = ? 
+                    AND content_type = ? AND source_id = ?
                     """,
-                    (user_id, user_name, match["word"], content, content_type, source_id, source_name)
-                )
-                alerts.append({
-                    "id": cursor.lastrowid,
-                    "sensitive_word": match["word"],
-                    "level": match["level"]
-                })
+                    (user_id, match["word"], content_type, source_id)
+                ).fetchone()
+                
+                if not exists:
+                    cursor = conn.execute(
+                        """
+                        INSERT INTO alerts (user_id, user_name, sensitive_word, content, 
+                                           content_type, source_id, source_name)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (user_id, user_name, match["word"], content, content_type, source_id, source_name)
+                    )
+                    alerts.append({
+                        "id": cursor.lastrowid,
+                        "sensitive_word": match["word"],
+                        "level": match["level"]
+                    })
         
         return alerts
     
