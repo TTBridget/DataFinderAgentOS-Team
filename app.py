@@ -4,6 +4,7 @@ import tornado.web
 from tornado.httpserver import HTTPServer
 
 from app.controllers.auth import LoginHandler, LogoutHandler, RegisterHandler
+from app.controllers.multimodal import FaceEnrollHandler, FaceLoginHandler, FaceStatusHandler, FaceDeleteHandler
 from app.controllers.home import IndexHandler
 from app.controllers.chat import ChatHandler, ChatSessionHandler, ChatMessageHandler, ChatResendHandler, ChatExportHandler, ModelListHandler, EmployeeListHandler
 from app.controllers.admin import (
@@ -43,6 +44,10 @@ def webapp():
 		(r"/login", LoginHandler),
 		(r"/logout", LogoutHandler),
 		(r"/register", RegisterHandler),
+		(r"/api/face/status", FaceStatusHandler),
+		(r"/api/face/enroll", FaceEnrollHandler),
+		(r"/api/face/login", FaceLoginHandler),
+		(r"/api/face/delete", FaceDeleteHandler),
 		(r"/index", IndexHandler),
 
 		# 前台API路由

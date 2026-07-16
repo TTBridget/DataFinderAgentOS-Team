@@ -4,3 +4,4 @@ beautifulsoup4
 lxml
 crawl4ai
 sqlparse
+fpdf2>=2.7,<3
