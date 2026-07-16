@@ -4,11 +4,15 @@ import re
 import time
 import random
 import asyncio
+import logging
 import urllib.parse
 import datetime
 
 import tornado.web
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
+
+# 配置控制器日志
+logger = logging.getLogger(__name__)
 
 from app.controllers.base import BaseHandler
 from app.models.chat import ChatSessionRepository, ChatMessageRepository
@@ -16,6 +20,7 @@ from app.models.ai_model import AiModelRepository
 from app.models.digital_employee import DigitalEmployeeRepository, read_employee_nd_contents
 from app.models.user import UserRepository
 from app.models.skill import SkillRepository, SkillEngine
+from app.models.data_warehouse import DataWarehouseRepository
 from app.services.intent_engine import recognize_intent, execute_database_query, generate_chart_config
 from app.utils.security import safe_int, validate_llm_base_url, validate_employee_api_url
 
@@ -241,34 +246,24 @@ def _fallback_news_card():
 	}
 
 
-def _deep_collect_with_crawl4ai(url):
+async def _deep_collect_async(url):
 	"""使用 crawl4ai 进行深度采集（供 @采集专员 在前台调用）"""
-	import asyncio
 	from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 	from crawl4ai.content_filter_strategy import PruningContentFilter
 	from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
-	async def do_crawl():
-		browser_cfg = BrowserConfig(headless=True, verbose=False)
-		run_cfg = CrawlerRunConfig(
-			markdown_generator=DefaultMarkdownGenerator(
-				content_filter=PruningContentFilter(threshold=0.48),
-				options={"ignore_links": True}
-			),
-			exclude_external_links=True,
-			remove_overlay_elements=True,
-			process_iframes=True
-		)
-		async with AsyncWebCrawler(config=browser_cfg) as crawler:
-			result = await crawler.arun(url, config=run_cfg)
-			return result
-
-	loop = asyncio.new_event_loop()
-	asyncio.set_event_loop(loop)
-	try:
-		result = loop.run_until_complete(do_crawl())
-	finally:
-		loop.close()
+	browser_cfg = BrowserConfig(headless=True, verbose=False)
+	run_cfg = CrawlerRunConfig(
+		markdown_generator=DefaultMarkdownGenerator(
+			content_filter=PruningContentFilter(threshold=0.48),
+			options={"ignore_links": True}
+		),
+		exclude_external_links=True,
+		remove_overlay_elements=True,
+		process_iframes=True
+	)
+	async with AsyncWebCrawler(config=browser_cfg) as crawler:
+		result = await crawler.arun(url, config=run_cfg)
 
 	if result.success:
 		title = result.metadata.get('title') if result.metadata else None
@@ -277,6 +272,29 @@ def _deep_collect_with_crawl4ai(url):
 	else:
 		error_msg = result.error_message if hasattr(result, 'error_message') else '未知错误'
 		return {'title': None, 'content': None, 'success': False, 'error': error_msg}
+
+
+def _build_collect_card_data(warehouse_id, title, url, word_count, status):
+	"""构建 @采集专员 结果卡片数据"""
+	return {
+		"warehouse_id": warehouse_id,
+		"title": title or "未获取标题",
+		"url": url,
+		"word_count": word_count or 0,
+		"status": status
+	}
+
+
+def _render_collect_card_text(card_data):
+	"""将采集结果卡片数据渲染为文本摘要"""
+	return (
+		f"已完成瞭望采集与深度采集\n"
+		f"数据仓库ID：{card_data['warehouse_id']}\n"
+		f"标题：{card_data['title']}\n"
+		f"URL：{card_data['url']}\n"
+		f"正文字数：{card_data['word_count']}\n"
+		f"状态：{card_data['status']}"
+	)
 
 
 class ModelListHandler(BaseHandler):
@@ -481,116 +499,122 @@ class ChatExportHandler(BaseHandler):
 	
 	@tornado.web.authenticated
 	def get(self):
-		user_id = _get_user_id(self)
-		session_id = safe_int(self.get_argument("session_id", 0), 0)
-		
-		if not user_id or not session_id:
-			self.write({"code": 1, "msg": "参数错误"})
-			return
-		
-		session = ChatSessionRepository.get_by_id(session_id)
-		if not session or session["user_id"] != user_id:
-			self.write({"code": 1, "msg": "无权操作"})
-			return
-		
-		messages = ChatMessageRepository.get_session_messages(session_id, user_id)
-		if not messages:
-			self.write({"code": 1, "msg": "当前对话为空，无法导出"})
-			return
-		
-		font_dir = os.path.normpath(
-			os.path.join(os.path.dirname(__file__), os.pardir, "static", "fonts")
-		)
-		bundled_fonts = [
-			os.path.join(font_dir, "NotoSansCJKsc-Regular.ttf"),
-			os.path.join(font_dir, "NotoSansCJKsc-Regular.otf"),
-		]
-		windows_font_dir = os.path.join(
-			os.environ.get("WINDIR", r"C:\Windows"), "Fonts"
-		)
-		system_fonts = [
-			os.path.join(windows_font_dir, "simhei.ttf"),
-			os.path.join(windows_font_dir, "msyh.ttc"),
-			os.path.join(windows_font_dir, "simsun.ttc"),
-		]
-		font_path = next(
-			(path for path in bundled_fonts + system_fonts if os.path.exists(path)),
-			None,
-		)
+		try:
+			user_id = _get_user_id(self)
+			session_id = safe_int(self.get_argument("session_id", 0), 0)
+			
+			if not user_id or not session_id:
+				self.write({"code": 1, "msg": "参数错误"})
+				return
+			
+			session = ChatSessionRepository.get_by_id(session_id)
+			if not session or session["user_id"] != user_id:
+				self.write({"code": 1, "msg": "无权操作"})
+				return
+			
+			messages = ChatMessageRepository.get_session_messages(session_id, user_id)
+			if not messages:
+				self.write({"code": 1, "msg": "当前对话为空，无法导出"})
+				return
+			
+			font_dir = os.path.normpath(
+				os.path.join(os.path.dirname(__file__), os.pardir, "static", "fonts")
+			)
+			bundled_fonts = [
+				os.path.join(font_dir, "NotoSansCJKsc-Regular.ttf"),
+				os.path.join(font_dir, "NotoSansCJKsc-Regular.otf"),
+			]
+			windows_font_dir = os.path.join(
+				os.environ.get("WINDIR", r"C:\Windows"), "Fonts"
+			)
+			system_fonts = [
+				os.path.join(windows_font_dir, "simhei.ttf"),
+				os.path.join(windows_font_dir, "msyh.ttc"),
+				os.path.join(windows_font_dir, "simsun.ttc"),
+			]
+			font_path = next(
+				(path for path in bundled_fonts + system_fonts if os.path.exists(path)),
+				None,
+			)
 
-		# 优先使用项目内或 Windows 自带的中文字体。仅在两者都不存在时联网下载。
-		if font_path is None:
-			os.makedirs(font_dir, exist_ok=True)
-			download_path = os.path.join(font_dir, "NotoSansCJKsc-Regular.otf")
-			try:
-				from tornado.httpclient import HTTPClient
-
-				client = HTTPClient()
+			# 优先使用项目内或 Windows 自带的中文字体。仅在两者都不存在时联网下载。
+			if font_path is None:
+				os.makedirs(font_dir, exist_ok=True)
+				download_path = os.path.join(font_dir, "NotoSansCJKsc-Regular.otf")
 				try:
-					resp = client.fetch(
-						"https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/"
-						"Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
-						request_timeout=60,
-						follow_redirects=True,
-					)
-				finally:
-					client.close()
+					from tornado.httpclient import HTTPClient
 
-				with open(download_path, "wb") as file:
-					file.write(resp.body)
-				font_path = download_path
+					client = HTTPClient()
+					try:
+						resp = client.fetch(
+							"https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/"
+							"Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+							request_timeout=60,
+							follow_redirects=True,
+						)
+					finally:
+						client.close()
+
+					with open(download_path, "wb") as file:
+						file.write(resp.body)
+					font_path = download_path
+				except Exception:
+					self.set_status(500)
+					self.write({
+						"code": 1,
+						"msg": "PDF 导出失败：未找到可用的中文字体。"
+					})
+					return
+
+			from fpdf import FPDF
+
+			pdf = FPDF()
+			pdf.add_page()
+			try:
+				pdf.add_font("DataFinderCJK", "", font_path)
+				pdf.set_font("DataFinderCJK", "", 12)
 			except Exception:
 				self.set_status(500)
 				self.write({
 					"code": 1,
-					"msg": "PDF 导出失败：未找到可用的中文字体。"
+					"msg": "PDF 导出失败：中文字体加载失败。"
 				})
 				return
 
-		from fpdf import FPDF
-
-		pdf = FPDF()
-		pdf.add_page()
-		try:
-			pdf.add_font("DataFinderCJK", "", font_path)
-			pdf.set_font("DataFinderCJK", "", 12)
-		except Exception:
-			self.set_status(500)
-			self.write({
-				"code": 1,
-				"msg": "PDF 导出失败：中文字体加载失败。"
-			})
-			return
-
-		# 标题
-		pdf.set_font_size(16)
-		pdf.cell(0, 10, txt=f"对话记录：{session['title'] or '未命名对话'}", ln=True, align="C")
-		pdf.set_font_size(10)
-		pdf.cell(0, 6, txt=f"导出时间：{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align="C")
-		pdf.ln(5)
-		
-		for msg in messages:
-			role_label = "用户" if msg["role"] == "user" else "AI"
+			# 标题
+			pdf.set_font_size(16)
+			pdf.cell(0, 10, txt=f"对话记录：{session['title'] or '未命名对话'}", ln=True, align="C")
 			pdf.set_font_size(10)
-			pdf.set_text_color(22, 93, 255)
-			pdf.cell(0, 6, txt=f"[{role_label}] {msg['created_at']}", ln=True)
-			pdf.set_text_color(0, 0, 0)
-			pdf.set_font_size(11)
+			pdf.cell(0, 6, txt=f"导出时间：{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align="C")
+			pdf.ln(5)
 			
-			content = msg["content"] or ""
-			# 去除 Markdown 简单标记，避免 PDF 中充斥星号等符号
-			content = re.sub(r'```[\s\S]*?```', '[代码块]', content)
-			content = re.sub(r'`([^`]+)`', r'\1', content)
-			content = content.replace("**", "").replace("*", "")
+			for msg in messages:
+				role_label = "用户" if msg["role"] == "user" else "AI"
+				pdf.set_font_size(10)
+				pdf.set_text_color(22, 93, 255)
+				pdf.cell(0, 6, txt=f"[{role_label}] {msg['created_at']}", ln=True)
+				pdf.set_text_color(0, 0, 0)
+				pdf.set_font_size(11)
+				
+				content = msg["content"] or ""
+				# 去除 Markdown 简单标记，避免 PDF 中充斥星号等符号
+				content = re.sub(r'```[\s\S]*?```', '[代码块]', content)
+				content = re.sub(r'`([^`]+)`', r'\1', content)
+				content = content.replace("**", "").replace("*", "")
+				
+				for line in content.split("\n"):
+					pdf.multi_cell(0, 6, txt=line)
+				pdf.ln(3)
 			
-			for line in content.split("\n"):
-				pdf.multi_cell(0, 6, txt=line)
-			pdf.ln(3)
-		
-		filename = f"chat_export_{session_id}_{int(time.time())}.pdf"
-		self.set_header("Content-Type", "application/pdf")
-		self.set_header("Content-Disposition", f"attachment; filename={filename}")
-		self.write(pdf.output(dest="S"))
+			filename = f"chat_export_{session_id}_{int(time.time())}.pdf"
+			self.set_header("Content-Type", "application/pdf")
+			self.set_header("Content-Disposition", f"attachment; filename={filename}")
+			self.write(pdf.output(dest="S"))
+		except Exception as e:
+			import traceback
+			traceback.print_exc()
+			self.set_status(500)
+			self.write({"code": 1, "msg": f"PDF 导出失败：{str(e)}"})
 
 
 class ChatHandler(BaseHandler):
@@ -623,6 +647,10 @@ class ChatHandler(BaseHandler):
 		# 记录请求开始时间，用于计算响应耗时
 		start_time = time.time()
 		
+		# 用于保存当前助手消息附带的数据卡片（weather/music/news/采集结果等）
+		assistant_card_type = None
+		assistant_card_data = None
+		
 		def _save_assistant_message(content, model_id=None, employee_id=None):
 			"""保存助手回复并返回耗时/token等元信息"""
 			response_time = round(time.time() - start_time, 2)
@@ -630,7 +658,9 @@ class ChatHandler(BaseHandler):
 			msg_id = ChatMessageRepository.create(
 				session_id, "assistant", content,
 				model_id=model_id, employee_id=employee_id,
-				response_time=response_time, token_count=token_count
+				response_time=response_time, token_count=token_count,
+				card_type=assistant_card_type,
+				card_data=json.dumps(assistant_card_data, ensure_ascii=False) if assistant_card_data is not None else None
 			)
 			return {"response_time": response_time, "token_count": token_count, "message_id": msg_id}
 		
@@ -768,6 +798,8 @@ class ChatHandler(BaseHandler):
 					display_text = f"随机推荐：{card_data['title']} - {card_data['artist']}"
 					self.write("data: " + json.dumps({"content": display_text}) + "\n\n")
 					self.flush()
+					assistant_card_type = "music"
+					assistant_card_data = card_data
 					self.write("data: " + json.dumps({"type": "card", "card_type": "music", "card_data": card_data}) + "\n\n")
 					self.flush()
 					meta = _save_assistant_message(display_text, employee_id=mentioned_employee["id"])
@@ -818,6 +850,8 @@ class ChatHandler(BaseHandler):
 					display_text = f"当前全国热点新闻（共 {len(card_data.get('items', []))} 条）"
 					self.write("data: " + json.dumps({"content": display_text}) + "\n\n")
 					self.flush()
+					assistant_card_type = "news"
+					assistant_card_data = card_data
 					self.write("data: " + json.dumps({"type": "card", "card_type": "news", "card_data": card_data}) + "\n\n")
 					self.flush()
 					meta = _save_assistant_message(display_text, employee_id=mentioned_employee["id"])
@@ -830,6 +864,8 @@ class ChatHandler(BaseHandler):
 					display_text = f"当前全国热点新闻（共 {len(card_data.get('items', []))} 条）"
 					self.write("data: " + json.dumps({"content": display_text}) + "\n\n")
 					self.flush()
+					assistant_card_type = "news"
+					assistant_card_data = card_data
 					self.write("data: " + json.dumps({"type": "card", "card_type": "news", "card_data": card_data}) + "\n\n")
 					self.flush()
 					meta = _save_assistant_message(display_text, employee_id=mentioned_employee["id"])
@@ -1000,6 +1036,8 @@ class ChatHandler(BaseHandler):
 				
 				# 推送卡片事件（供前端渲染数据卡片）
 				if card_data:
+					assistant_card_type = card_type
+					assistant_card_data = card_data
 					self.write("data: " + json.dumps({"type": "card", "card_type": card_type, "card_data": card_data}) + "\n\n")
 					self.flush()
 				
@@ -1065,19 +1103,76 @@ class ChatHandler(BaseHandler):
 				self.write("data: " + json.dumps({"content": f"正在采集 {target_url} 的详细内容，请稍候..."}) + "\n\n")
 				self.flush()
 				try:
-					crawl_result = _deep_collect_with_crawl4ai(target_url)
+					crawl_result = await _deep_collect_async(target_url)
 					if crawl_result.get("success"):
 						title = crawl_result.get("title") or "未获取标题"
 						content = crawl_result.get("content") or ""
+						word_count = len(content)
+
+						# 1. 瞭望采集：将原始采集结果保存到数据仓库
+						warehouse_id = DataWarehouseRepository.save_data(
+							source_id=0,
+							title=title,
+							url=target_url,
+							content=content[:2000],
+							publish_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+							source_name="前台@采集专员",
+							keyword=message[:100]
+						)
+
+						# 2. 进一步深度采集：创建并执行深度采集任务
+						task_id = DataWarehouseRepository.create_deep_collect_task(
+							warehouse_id,
+							employee_id=mentioned_employee["id"],
+							employee_name=mentioned_employee["name"]
+						)
+						DataWarehouseRepository.update_deep_collect_task(task_id, status='running', progress=30)
+						DataWarehouseRepository.add_deep_collect_step(task_id, '网页内容提取', 'completed')
+						DataWarehouseRepository.add_deep_collect_log(task_id, f'URL: {target_url}', 'info')
+						result_data = json.dumps({
+							'title': title,
+							'url': target_url,
+							'content': content,
+							'word_count': word_count,
+							'original_content': content[:2000]
+						}, ensure_ascii=False)
+						DataWarehouseRepository.update_deep_collect_task(
+							task_id,
+							status='completed',
+							progress=100,
+							result_data=result_data,
+							title=title,
+							content=content,
+							url=target_url,
+							word_count=word_count
+						)
+						DataWarehouseRepository.add_deep_collect_step(task_id, '整理结构化数据', 'completed')
+						DataWarehouseRepository.add_deep_collect_log(task_id, '深度采集完成', 'info')
+						DataWarehouseRepository.toggle_deep_collected(warehouse_id, 1)
+
+						# 3. 向前台推送采集结果卡片
+						card_data = _build_collect_card_data(warehouse_id, title, target_url, word_count, "已深度采集")
+						assistant_card_type = "table"
+						assistant_card_data = [card_data]
+						self.write("data: " + json.dumps({"content": _render_collect_card_text(card_data)}) + "\n\n")
+						self.flush()
+						self.write("data: " + json.dumps({"type": "card", "card_type": "table", "card_data": [card_data]}) + "\n\n")
+						self.flush()
+
 						# 限制上下文长度，避免超出模型上下文
 						max_content_len = 6000
 						if len(content) > max_content_len:
 							content = content[:max_content_len] + "\n...（内容已截断）"
 						collected_context = f"【采集到的网页内容】\n标题：{title}\nURL：{target_url}\n正文：\n{content}\n\n请基于以上内容回答用户问题，并可生成表格或报表呈现关键数据。"
 					else:
-						collected_context = f"【采集提示】网页 {target_url} 采集失败：{crawl_result.get('error', '未知错误')}，请用户提供可访问的链接或补充描述。"
+						error = crawl_result.get('error', '未知错误')
+						collected_context = f"【采集提示】网页 {target_url} 采集失败：{error}，请用户提供可访问的链接或补充描述。"
+						self.write("data: " + json.dumps({"content": collected_context}) + "\n\n")
+						self.flush()
 				except Exception as e:
 					collected_context = f"【采集提示】采集过程发生异常：{str(e)}，请稍后重试。"
+					self.write("data: " + json.dumps({"content": collected_context}) + "\n\n")
+					self.flush()
 		
 		# 添加当前消息
 		final_user_content = message
@@ -1139,7 +1234,7 @@ class ChatHandler(BaseHandler):
 				headers=headers,
 				body=json.dumps(payload),
 				streaming_callback=streaming_callback,
-				request_timeout=60,
+				request_timeout=120,
 				follow_redirects=False
 			)
 			
@@ -1166,6 +1261,9 @@ class ChatHandler(BaseHandler):
 			self.flush()
 			
 		except Exception as e:
+			import traceback
+			logger.error("LLM 请求失败: %s", str(e), exc_info=True)
+			traceback.print_exc()
 			error_msg = f"模型请求失败: {str(e)}"
 			self.write("data: " + json.dumps({"error": error_msg}) + "\n\n")
 			self.flush()

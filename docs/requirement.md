@@ -145,6 +145,16 @@ DataFinderAgentOS 是一款政务智能瞭望与智能问数系统，基于 Torn
     - **天气卡片中文化**（10.4）：`_parse_weather_card` 使用用户输入的中文城市名替代 API 返回的英文名；优先读取 `lang_zh` 字段；`_translate_weather_desc` 新增 20+ 翻译词条并添加模糊匹配
     - **新闻API修复**（10.4）：vvhan API SSL 错误，添加备用 API（`60s.viki.moe/v2/60s`）；`follow_redirects=True`；`_parse_news_card` 兼容三种格式（vvhan列表、60s嵌套字典、纯数组）
 
+14. **任务7.1：前台数字员工与对话体验修复（v0.1 新增）**
+    - **用户消息换行修复**：前台用户消息展示由 `white-space: pre-wrap` 调整为 `white-space: normal`，实现与 AI 回复一致的字满换行效果，避免异常换行
+    - **@采集专员深度采集**：前台 `@采集专员` 触发时自动提取用户消息中的 URL，使用 crawl4ai 进行瞭望采集（保存到 `data_warehouse`）并进一步创建深度采集任务（写入 `deep_collected_data`），最后以表格卡片形式推送采集结果
+    - **历史记录卡片持久化**：`chat_messages` 表新增 `card_type`、`card_data` 字段，AI 回复生成卡片时同步持久化；加载历史会话时重新调用 `renderCard()` 渲染，保证 `@天气` 等卡片在历史记录中不会失效
+    - **左侧数字员工工具栏补全**：前台左侧边栏"数字员工"分类中新增 `@随机音乐`、`@新闻`、`@文案写作助手`、`@小智`、`@采集专员` 入口，与 `@天气` 一起形成完整的默认数字员工快捷入口
+    - **@文案写作助手提示文件落地**：提示文件统一维护在 `docs/prompts/WriteToolsAgent/` 下，同时保留 `temp/WriteToolsAgent/Docs/` 与 `temp/` 作为兼容回退；初始化数据库时按优先级将 `role.md`、`constraint.md`、`scene.md`、`template.md` 按角色→约束→场景→模板顺序复制到 `data/dgUser/{employee_id}/` 并注入 System Prompt；严格按"关键词 → 10 主题 → 选编号 → 三类大纲 → 选风格 → 逐章正文"的交互流程执行
+    - **对话导出 PDF 修复**：`ChatExportHandler` 增加中文字体自动探测（项目字体 → Windows 系统字体 → 联网下载 Noto Sans CJK SC）和异常捕获，解决导出失败问题；导出内容包含会话标题、导出时间、角色、时间、内容（已做简单 Markdown 去标记）
+    - **置顶会话防下沉**：`ChatSessionRepository.get_user_sessions()` 按 `is_pinned DESC, updated_at DESC` 排序；新建会话或更新会话后重新加载列表，确保被置顶的历史记录不会被新对话顶下去
+    - **数据库表完善**：`chat_sessions` 增加 `is_pinned`（置顶）；`chat_messages` 增加 `is_edited`（编辑重发）、`response_time`、`token_count`、`card_type`、`card_data`；`deep_collected_data` 增加 `title`、`content`、`url`、`word_count` 以支撑前台采集结果持久化
+
 ## 需求跟踪
 
 ### 用户侧-前台功能需求
@@ -158,17 +168,21 @@ DataFinderAgentOS 是一款政务智能瞭望与智能问数系统，基于 Torn
 | 智能问数 | 智能分析解读 | 已完成 | 高 | 对查询结果进行自然语言分析，简单结果本地格式化，复杂结果由模型生成结论 |
 | 智能问数 | 图形图像报表 | 已完成 | 高 | 基于 Echarts 动态渲染柱状图/折线图/饼图/散点图，按意图调度生成 |
 | 数字员工 | 员工调度 | 已完成 | 高 | 输入 `@` 可调出后台启用的数字员工，支持任意已配置员工（如 @采集专员） |
-| 数字员工 | @天气 | 已完成 | 中 | 默认配置 API 类型"天气"员工，调用 wttr.in 查询天气，前端输入 @天气 城市名 即可调用，渲染中文天气卡片 |
-| 数字员工 | @随机音乐 | 已完成 | 中 | 默认 API 类型"随机音乐"员工，返回红色系音乐卡片，支持在线播放/暂停/换一首 |
-| 数字员工 | @新闻 | 已完成 | 中 | 默认 API 类型"新闻"员工，调用热点新闻接口返回 10 条全国热点新闻，浅色卡片展示。主 API 为 vvhan，备用 API 为 60s读懂世界（60s.viki.moe） |
-| 数字员工 | @文案写作助手 | 已完成 | 中 | 默认 LLM 类型"文案写作助手"员工，引入 temp/WriteToolsAgent/Docs 提示文件，严格按角色/约束/场景/模板流程交互写作 |
-| 数字员工 | @小智 | 已完成 | 中 | 默认 LLM 类型"小智"员工，支持通用 AI 聊天对话 |
-| 数字员工 | @采集专员 | 已完成 | 中 | 默认 LLM 类型"采集专员"员工，支持 @采集专员 进行深度采集任务，可生成表格/报表呈现 |
+| 数字员工 | @天气 | 已完成 | 中 | 默认配置 API 类型"天气"员工，调用 wttr.in 查询天气，前端输入 @天气 城市名 即可调用，渲染中文天气卡片；历史记录中可重新渲染卡片 |
+| 数字员工 | @随机音乐 | 已完成 | 中 | 默认 API 类型"随机音乐"员工，返回红色系音乐卡片，支持在线播放/暂停/换一首；已加入左侧数字员工工具栏 |
+| 数字员工 | @新闻 | 已完成 | 中 | 默认 API 类型"新闻"员工，调用热点新闻接口返回 10 条全国热点新闻，浅色卡片展示。主 API 为 vvhan，备用 API 为 60s读懂世界（60s.viki.moe）；已加入左侧数字员工工具栏 |
+| 数字员工 | @文案写作助手 | 已完成 | 中 | 默认 LLM 类型"文案写作助手"员工，引入 temp/WriteToolsAgent/Docs 提示文件，严格按角色/约束/场景/模板流程交互写作；已加入左侧数字员工工具栏 |
+| 数字员工 | @小智 | 已完成 | 中 | 默认 LLM 类型"小智"员工，支持通用 AI 聊天对话；已加入左侧数字员工工具栏 |
+| 数字员工 | @采集专员 | 已完成 | 中 | 默认 LLM 类型"采集专员"员工，前台 @采集专员 提取 URL 后使用 crawl4ai 进行瞭望采集并进一步创建深度采集任务，以表格卡片呈现结果；已加入左侧数字员工工具栏 |
+| 数字员工 | 历史卡片渲染 | 已完成 | 中 | `chat_messages` 新增 `card_type`/`card_data` 字段，历史消息加载时自动重新渲染天气/音乐/新闻/表格等卡片 |
+| 数字员工 | 左侧工具栏 | 已完成 | 中 | 前台左侧边栏"数字员工"分类展示全部默认数字员工快捷入口，点击自动填入输入框 |
 | 报表功能 | 报表呈现 | 已完成 | 中 | 前台"报表呈现"入口 + chart_request 意图自动生成 Echarts 图表 |
 | 报表功能 | 报表查看 | 待开发 | 中 | 查看生成的报表 |
-| 历史记录 | 任务列表 | 已完成 | 中 | 左侧"历史任务"列表支持新建/切换/删除/置顶/重命名会话 |
+| 历史记录 | 任务列表 | 已完成 | 中 | 左侧"历史任务"列表支持新建/切换/删除/置顶/重命名会话；置顶会话始终排在最前 |
 | 历史记录 | 对话历史 | 已完成 | 中 | 左侧任务列表点击可查看历史对话记录 |
-| 报告导出 | 对话导出 PDF | 已完成 | 中 | 对话区右上角"导出"按钮，将当前会话内容导出为 PDF 文件并保存 |
+| 历史记录 | 会话置顶 | 已完成 | 中 | 置顶会话不会被新创建会话顶下去；列表排序为 `is_pinned DESC, updated_at DESC` |
+| 报告导出 | 对话导出 PDF | 已完成 | 中 | 对话区右上角"导出"按钮，将当前会话内容导出为 PDF 文件并保存；支持中文字体自动探测与异常提示 |
+| 对话交互 | 用户消息换行 | 已完成 | 中 | 用户消息展示使用 `white-space: normal; word-break: break-word`，与 AI 回复一致实现字满换行 |
 | 对话交互 | 暂停生成 | 已完成 | 中 | AI 生成过程中可随时点击"暂停生成"按钮停止当前输出 |
 | 对话交互 | 编辑重发 | 已完成 | 中 | 用户可编辑已发送的用户消息并重新发送，AI 基于新内容重新思考回复 |
 | 其他 | 用户登出 | 已完成 | 中 | 已实现登出功能 |
@@ -294,6 +308,20 @@ DataFinderAgentOS 是一款政务智能瞭望与智能问数系统，基于 Torn
 | 表格 | Markdown 表格渲染为带边框表格 | 通过 |
 | 原始 HTML 过滤 | 消息中的 `<script>` 等原始 HTML 被转义，不执行 | 通过 |
 | 流式消息 | SSE 流式输出的 AI 内容实时按 Markdown 渲染 | 通过 |
+
+## 任务 7.1 修复记录
+
+针对用户侧前台数字员工与对话体验的 7 项问题修复：
+
+| 修复项 | 涉及文件 | 修复措施 | 验证结果 |
+|--------|---------|---------|---------|
+| 用户输入异常换行 | `app/templates/index.html` | `.message.user .message-content` 设置为 `white-space: normal; word-break: break-word`，实现与 AI 回复一致的字满换行 | 通过 |
+| @采集专员无法采集 | `app/controllers/chat.py`、`app/models/data_warehouse.py` | 前台 `@采集专员` 触发时提取 URL，调用 `_deep_collect_async` 使用 crawl4ai 爬取；结果保存到 `data_warehouse` 并创建 `deep_collected_data` 深度采集任务，最后以表格卡片推送结果 | 通过 |
+| 天气卡片在历史记录中失效 | `app/controllers/chat.py`、`app/models/chat.py`、`app/models/db.py`、`app/templates/index.html` | `chat_messages` 表新增 `card_type`、`card_data` 字段；生成卡片时持久化；加载历史消息时重新调用 `renderCard()` 渲染 | 通过 |
+| 左侧数字员工工具栏缺失 | `app/templates/index.html` | 左侧边栏"数字员工"分类补全 `@随机音乐`、`@新闻`、`@文案写作助手`、`@小智`、`@采集专员` 入口，点击自动填入输入框 | 通过 |
+| 对话导出 PDF 不可用 | `app/controllers/chat.py` | `ChatExportHandler` 增加中文字体自动探测（项目字体 → Windows 系统字体 → 联网下载 Noto Sans CJK SC）和异常捕获；导出内容做简单 Markdown 去标记处理 | 通过 |
+| 置顶会话被新对话顶下去 | `app/models/chat.py`、`app/templates/index.html` | `get_user_sessions()` 排序改为 `is_pinned DESC, updated_at DESC`；新建会话后重新加载列表；置顶会话始终排在最前 | 通过 |
+| 数据库表结构完善 | `app/models/db.py`、`app/models/chat.py` | `chat_sessions` 增加 `is_pinned`；`chat_messages` 增加 `is_edited`、`response_time`、`token_count`、`card_type`、`card_data`；`deep_collected_data` 增加 `title`、`content`、`url`、`word_count` | 通过 |
 
 ## 后台管理菜单交互
 
@@ -454,3 +482,4 @@ DataFinderAgentOS 安全修复自动化验证
 - 2026-07-16: 完成任务 10.3 后台主页优化：AdminIndexHandler 查询真实统计数据（用户/仓库/员工/模型），4个渐变色统计卡片；快捷操作3个入口（数智大屏/数据仓库/对话管理）；功能导航8个入口全部链接到实际路由；移除所有"功能开发中"占位
 - 2026-07-16: 完成任务 10.4 前台功能修复：天气卡片中文化（使用用户输入的中文城市名 + lang_zh 字段 + 扩展翻译词条20+）；新闻API修复（vvhan SSL 错误，添加 60s.viki.moe 备用 API，follow_redirects=True，_parse_news_card 兼容三种格式）
 - 2026-07-16: 维护 docs/ 文档：requirement.md 新增任务 9.3/10/10.1-10.4 已实现功能说明和变更记录；project_tree_full.txt 新增 chat_message.html
+- 2026-07-16: 完成任务 7.1：修复用户输入异常换行、@采集专员深度采集、历史记录卡片渲染失效、左侧数字员工工具栏补全、对话导出 PDF、置顶会话防下沉等问题；完善 chat_sessions/chat_messages/deep_collected_data 表结构；更新 requirement.md/front_end_user.md/digital_employee.md/deep_collect.md/test_case.md

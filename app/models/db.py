@@ -818,29 +818,33 @@ def init_db():
 			writer_id = writer_row["id"]
 			writer_dir = os.path.join(project_root(), "data", "dgUser", str(writer_id))
 			os.makedirs(writer_dir, exist_ok=True)
+			# 优先使用标准路径，不存在则依次回退到 docs/prompts/WriteToolsAgent、temp/ 根目录
 			source_docs = os.path.join(project_root(), "temp", "WriteToolsAgent", "Docs")
-			if os.path.isdir(source_docs):
-				# 清理旧版无序号前缀的同名提示文件，避免内容重复
-				for old_name in ["role.nd", "constraint.nd", "scene.nd", "template.nd"]:
-					old_path = os.path.join(writer_dir, old_name)
-					if os.path.exists(old_path):
-						try:
-							os.remove(old_path)
-						except Exception:
-							pass
-				# 按顺序写入带前缀的 .nd 文件，保证 read_employee_nd_contents 读取顺序稳定
-				ordered_docs = [
-					("01_role.nd", "role.md"),
-					("02_constraint.nd", "constraint.md"),
-					("03_scene.nd", "scene.md"),
-					("04_template.nd", "template.md"),
-				]
-				for dst_name, src_name in ordered_docs:
-					src = os.path.join(source_docs, src_name)
-					dst = os.path.join(writer_dir, dst_name)
-					if os.path.exists(src):
-						import shutil
-						shutil.copy2(src, dst)
+			if not os.path.isdir(source_docs):
+				source_docs = os.path.join(project_root(), "docs", "prompts", "WriteToolsAgent")
+			if not os.path.isdir(source_docs):
+				source_docs = os.path.join(project_root(), "temp")
+			# 清理旧版无序号前缀的同名提示文件，避免内容重复
+			for old_name in ["role.nd", "constraint.nd", "scene.nd", "template.nd"]:
+				old_path = os.path.join(writer_dir, old_name)
+				if os.path.exists(old_path):
+					try:
+						os.remove(old_path)
+					except Exception:
+						pass
+			# 按顺序写入带前缀的 .nd 文件，保证 read_employee_nd_contents 读取顺序稳定
+			ordered_docs = [
+				("01_role.nd", "role.md"),
+				("02_constraint.nd", "constraint.md"),
+				("03_scene.nd", "scene.md"),
+				("04_template.nd", "template.md"),
+			]
+			for dst_name, src_name in ordered_docs:
+				src = os.path.join(source_docs, src_name)
+				dst = os.path.join(writer_dir, dst_name)
+				if os.path.exists(src):
+					import shutil
+					shutil.copy2(src, dst)
 		
 		# 创建前台对话会话表
 		conn.execute(
@@ -872,6 +876,8 @@ def init_db():
 				response_time REAL, -- 响应耗时（秒）
 				token_count INTEGER, -- Token 数量
 				is_edited INTEGER DEFAULT 0, -- 是否经过编辑重发
+				card_type TEXT, -- 数据卡片类型：weather/music/news/json/table/html
+				card_data TEXT, -- 数据卡片原始 JSON
 				created_at TEXT NOT NULL DEFAULT(datetime('now','localtime')),
 				FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
 			)
@@ -895,6 +901,15 @@ def init_db():
 		# 迁移：为已有 chat_messages 表添加 is_edited 字段
 		try:
 			conn.execute("ALTER TABLE chat_messages ADD COLUMN is_edited INTEGER DEFAULT 0")
+		except sqlite3.OperationalError:
+			pass
+		# 迁移：为已有 chat_messages 表添加 card_type / card_data 字段（用于历史记录中重新渲染卡片）
+		try:
+			conn.execute("ALTER TABLE chat_messages ADD COLUMN card_type TEXT")
+		except sqlite3.OperationalError:
+			pass
+		try:
+			conn.execute("ALTER TABLE chat_messages ADD COLUMN card_data TEXT")
 		except sqlite3.OperationalError:
 			pass
 		

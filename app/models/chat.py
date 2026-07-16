@@ -209,12 +209,12 @@ class ChatMessageRepository:
 			return True
 
 	@staticmethod
-	def create(session_id, role, content, model_id=None, employee_id=None, response_time=None, token_count=None):
+	def create(session_id, role, content, model_id=None, employee_id=None, response_time=None, token_count=None, card_type=None, card_data=None):
 		"""创建消息"""
 		with get_connection() as conn:
 			cursor = conn.execute(
-				"INSERT INTO chat_messages (session_id, role, content, model_id, employee_id, response_time, token_count) VALUES (?, ?, ?, ?, ?, ?, ?)",
-				(session_id, role, content, model_id, employee_id, response_time, token_count)
+				"INSERT INTO chat_messages (session_id, role, content, model_id, employee_id, response_time, token_count, card_type, card_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				(session_id, role, content, model_id, employee_id, response_time, token_count, card_type, card_data)
 			)
 			return cursor.lastrowid
 	

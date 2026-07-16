@@ -461,6 +461,8 @@ html, body {
     background: #e8f0ff;
     color: #165DFF;
     border-top-right-radius: 4px;
+    white-space: normal;
+    word-break: break-word;
 }
 .message-meta {
     font-size: 12px;
@@ -1706,7 +1708,17 @@ function loadSession(sessionId){
                 if(msg.role === 'assistant' && (msg.response_time !== undefined || msg.token_count !== undefined)){
                     meta = {response_time: msg.response_time, token_count: msg.token_count};
                 }
-                appendMessage(msg.role, msg.content, false, meta, msg.id);
+                var msgDiv = appendMessage(msg.role, msg.content, false, meta, msg.id);
+                // 历史消息中的数据卡片重新渲染
+                if(msg.role === 'assistant' && msg.card_type && msg.card_data){
+                    try {
+                        var cardData = JSON.parse(msg.card_data);
+                        var cardHTML = renderCard(msg.card_type, cardData);
+                        appendCardToMessage(cardHTML, msgDiv);
+                    } catch(e) {
+                        console.error('Card render error', e);
+                    }
+                }
             });
             scrollToBottom();
         }
@@ -1915,9 +1927,9 @@ function removeStreamingMarker(){
     }
 }
 
-function appendCardToMessage(cardHTML){
+function appendCardToMessage(cardHTML, targetMsg){
     if(!cardHTML) return;
-    var msg = document.getElementById('streamingMessage');
+    var msg = targetMsg || document.getElementById('streamingMessage');
     if(!msg){
         msg = appendMessage('assistant', '', false);
     }
@@ -2411,12 +2423,8 @@ function sendMessageCore(message, resendMessageId){
             var data = JSON.parse(event.data);
             if(data.type === 'session' && data.data){
                 currentSessionId = data.data.id;
-                // 更新会话标题显示
-                var exists = sessions.find(function(s){ return s.id == currentSessionId; });
-                if(!exists){
-                    sessions.unshift(data.data);
-                    renderSessionList();
-                }
+                // 重新加载会话列表，确保置顶会话始终排在最前，新会话不会将其顶下去
+                loadSessions();
                 return;
             }
             if(data.type === 'card' && data.card_type && data.card_data){
@@ -2426,7 +2434,7 @@ function sendMessageCore(message, resendMessageId){
                     msg.querySelector('.message-content').innerHTML = '';
                 }
                 var cardHTML = renderCard(data.card_type, data.card_data);
-                appendCardToMessage(cardHTML);
+                appendCardToMessage(cardHTML, msg);
                 return;
             }
             if(data.type === 'meta' && data.data){

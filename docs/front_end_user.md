@@ -36,6 +36,8 @@
 - **历史查看**：点击左侧任务列表标题加载完整历史消息
 - **删除会话**：悬停（桌面端）或长按/常驻（移动端）显示删除按钮
 - **新建会话**：点击“新对话”清空当前会话并回到空状态
+- **置顶会话**：点击会话条目的置顶图标可将会话固定在列表最顶部；置顶会话不会被新创建的会话顶下去，列表按 `is_pinned DESC, updated_at DESC` 排序
+- **重命名会话**：点击编辑图标可修改会话标题
 
 ### 5. SSE 流式对话
 
@@ -87,12 +89,17 @@
 - 菜单列出后台已启用的数字员工，**显示与交互均使用后台配置的员工名称**
 - 支持方向键选择、Enter 确认、Esc 关闭
 - 发送消息后，后端解析 `@员工名` 指令并调用对应员工
+- **左侧数字员工工具栏**：前台左侧边栏"数字员工"分类集中展示默认数字员工快捷入口：`@天气`、`@随机音乐`、`@新闻`、`@文案写作助手`、`@小智`、`@采集专员`，点击自动填入输入框
 - **模型优先级**：优先使用数字员工自身配置的模型；若未配置，则回退到系统默认模型
 - 支持 LLM 类型员工（System Prompt + 模型）和 API 类型员工（HTTP 接口调用）
 - **典型员工**：
-  - `@采集专员`：调用 crawl4ai 进行网页深度采集
+  - `@采集专员`：提取用户消息中的 URL，使用 crawl4ai 进行瞭望采集并进一步创建深度采集任务，最终以表格卡片呈现采集结果
   - `@天气`：调用 wttr.in API 查询指定城市天气（如 `@天气 北京`），天气描述已翻译为中文
+  - `@随机音乐`：从内置曲库随机推荐一首音乐，渲染可播放的音乐卡片
+  - `@新闻`：调用热点新闻接口返回全国热点新闻列表
+  - `@文案写作助手`：交互递进式专业文案写作。输入 `@文案写作助手 开始` 后，按"关键词 → 10 个备选主题 → 选择编号 → 三类风格大纲 → 选择风格 → 逐章正文"的流程分步完成，每章结束后等待用户输入 `确认继续` 或修改意见。提示文件统一维护在 `docs/prompts/WriteToolsAgent/` 下
 - **数据卡片渲染**：API 类型员工若配置了 `card_type`，服务端会在 SSE 流中推送 `type=card` 事件，前端自动调用 `renderCard()` 渲染为对应卡片，与文本回复一起展示
+- **历史记录卡片持久化**：`chat_messages` 表新增 `card_type` 与 `card_data` 字段，生成卡片时同步持久化；加载历史会话时重新调用 `renderCard()` 渲染，确保 `@天气` 等卡片在历史记录中不会失效
 
 ### 9. / 快捷功能
 
@@ -113,7 +120,22 @@
 - **html**：直接渲染接口返回的 HTML 片段
 - **无/空**：不渲染卡片，仅展示文本回复
 
+**历史记录持久化**：`chat_messages` 表新增 `card_type`（卡片类型）和 `card_data`（卡片原始 JSON）字段。AI 回复生成卡片时，服务端将卡片数据与文本内容一起保存；加载历史会话时，前端读取 `card_type`/`card_data` 并重新调用 `renderCard()`，确保天气、音乐、新闻、表格等卡片在查看历史对话时依然有效。
+
 **实现文件**：`app/templates/index.html` 中定义了 `renderCard`、`renderWeatherCard`、`renderJsonCard`、`renderTableCard`、`appendCardToMessage`、`appendChartToMessage`、`initEChart` 等函数，并在 SSE `onmessage` 中监听 `type=card`、`type=chart`、`type=meta` 等事件。
+
+### 11. 对话导出 PDF
+
+- 对话区右上角提供"导出"按钮，点击后以 `GET /api/chat/export?session_id=xxx` 导出当前会话为 PDF 文件
+- 后端使用 `fpdf2` 生成 PDF，自动探测中文字体：优先使用项目 bundled 字体，其次使用 Windows 系统字体（simhei/msyh/simsun），最后尝试联网下载 Noto Sans CJK SC
+- 导出内容包含会话标题、导出时间、每条消息的角色/时间/内容，并做简单的 Markdown 去标记处理（代码块替换为 `[代码块]`、去除 `**` 等），避免 PDF 中充斥星号等符号
+- 导出前校验会话归属，防止越权导出他人对话；导出失败时返回明确的错误提示
+
+### 12. 消息展示与换行
+
+- 用户消息与 AI 回复均采用聊天气泡形式展示
+- 用户消息内容使用 `white-space: normal; word-break: break-word`，实现与 AI 回复一致的字满自动换行，避免提交后出现异常换行
+- AI 回复内容使用 Markdown 渲染，保留段落、列表、代码块、表格等格式
 
 ## 数据库设计
 
@@ -126,6 +148,7 @@
 | title | TEXT | 会话标题 |
 | model_id | INTEGER | 当前使用的模型 ID |
 | employee_id | INTEGER | 当前关联的数字员工 ID |
+| is_pinned | INTEGER | 是否置顶（0/1） |
 | created_at | TEXT | 创建时间 |
 | updated_at | TEXT | 更新时间 |
 
@@ -141,6 +164,9 @@
 | employee_id | INTEGER | 生成该消息使用的数字员工 ID |
 | response_time | REAL | 响应耗时（秒）|
 | token_count | INTEGER | Token 估算数量 |
+| is_edited | INTEGER | 是否经过编辑重发（0/1） |
+| card_type | TEXT | 数据卡片类型（weather/music/news/json/table/html） |
+| card_data | TEXT | 数据卡片原始 JSON |
 | created_at | TEXT | 创建时间 |
 
 ## 接口说明
@@ -154,9 +180,11 @@
 | `/api/models` | GET | 获取可用模型列表 |
 | `/api/employees` | GET | 获取已启用的数字员工列表 |
 | `/api/chat/sessions` | GET | 获取当前用户会话列表 |
-| `/api/chat/sessions` | POST | 创建/更新/删除会话 |
+| `/api/chat/sessions` | POST | 创建/更新/删除/置顶/重命名会话 |
 | `/api/chat/messages` | GET | 获取指定会话的消息历史 |
 | `/api/chat` | GET (SSE) | 流式对话接口 |
+| `/api/chat/resend` | POST | 编辑重发用户消息 |
+| `/api/chat/export` | GET | 导出当前会话为 PDF |
 
 ## 文件结构
 
