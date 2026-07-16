@@ -1,2 +1,33 @@
 /temp
 /venv
+# Local Python environments
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# SQLite temporary files
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Temporary patch backups
+*.before_*
+
+# One-time local repair scripts
+fix_windows_sqlite_lock.py
+fix_face_models_and_pdf_export.py
+upgrade_face_login_v2.py
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

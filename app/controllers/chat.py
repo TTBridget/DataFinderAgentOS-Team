@@ -498,44 +498,70 @@ class ChatExportHandler(BaseHandler):
 			self.write({"code": 1, "msg": "当前对话为空，无法导出"})
 			return
 		
-		font_dir = os.path.join(os.path.dirname(__file__), os.pardir, "static", "fonts")
-		font_path = os.path.join(font_dir, "NotoSansCJKsc-Regular.ttf")
-		
-		# 若中文字体不存在，尝试下载
-		if not os.path.exists(font_path):
+		font_dir = os.path.normpath(
+			os.path.join(os.path.dirname(__file__), os.pardir, "static", "fonts")
+		)
+		bundled_fonts = [
+			os.path.join(font_dir, "NotoSansCJKsc-Regular.ttf"),
+			os.path.join(font_dir, "NotoSansCJKsc-Regular.otf"),
+		]
+		windows_font_dir = os.path.join(
+			os.environ.get("WINDIR", r"C:\Windows"), "Fonts"
+		)
+		system_fonts = [
+			os.path.join(windows_font_dir, "simhei.ttf"),
+			os.path.join(windows_font_dir, "msyh.ttc"),
+			os.path.join(windows_font_dir, "simsun.ttc"),
+		]
+		font_path = next(
+			(path for path in bundled_fonts + system_fonts if os.path.exists(path)),
+			None,
+		)
+
+		# 优先使用项目内或 Windows 自带的中文字体。仅在两者都不存在时联网下载。
+		if font_path is None:
 			os.makedirs(font_dir, exist_ok=True)
+			download_path = os.path.join(font_dir, "NotoSansCJKsc-Regular.otf")
 			try:
 				from tornado.httpclient import HTTPClient
+
 				client = HTTPClient()
-				# 使用 CDN 下载 Noto Sans CJK SC 字体
-				resp = client.fetch(
-					"https://github.com/notofonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
-					request_timeout=30,
-					follow_redirects=True
-				)
-				with open(font_path.replace(".ttf", ".otf"), "wb") as f:
-					f.write(resp.body)
-				font_path = font_path.replace(".ttf", ".otf")
+				try:
+					resp = client.fetch(
+						"https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/"
+						"Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+						request_timeout=60,
+						follow_redirects=True,
+					)
+				finally:
+					client.close()
+
+				with open(download_path, "wb") as file:
+					file.write(resp.body)
+				font_path = download_path
 			except Exception:
-				pass
-		
+				self.set_status(500)
+				self.write({
+					"code": 1,
+					"msg": "PDF 导出失败：未找到可用的中文字体。"
+				})
+				return
+
+		from fpdf import FPDF
+
+		pdf = FPDF()
+		pdf.add_page()
 		try:
-			from fpdf import FPDF
-			
-			pdf = FPDF()
-			pdf.add_page()
-			if os.path.exists(font_path):
-				pdf.add_font("NotoSansCJK", "", font_path, uni=True)
-				pdf.set_font("NotoSansCJK", "", 12)
-			else:
-				raise RuntimeError("中文字体未找到")
+			pdf.add_font("DataFinderCJK", "", font_path)
+			pdf.set_font("DataFinderCJK", "", 12)
 		except Exception:
-			# 字体加载失败，使用内置字体降级（中文会显示为乱码，仅作兜底）
-			from fpdf import FPDF
-			pdf = FPDF()
-			pdf.add_page()
-			pdf.set_font("Arial", "", 12)
-		
+			self.set_status(500)
+			self.write({
+				"code": 1,
+				"msg": "PDF 导出失败：中文字体加载失败。"
+			})
+			return
+
 		# 标题
 		pdf.set_font_size(16)
 		pdf.cell(0, 10, txt=f"对话记录：{session['title'] or '未命名对话'}", ln=True, align="C")

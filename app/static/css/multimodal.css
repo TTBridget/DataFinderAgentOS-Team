@@ -1,0 +1,27 @@
+.mm-hidden{display:none!important}
+.mm-control-group{display:inline-flex;gap:8px;align-items:center;margin-right:8px}
+.mm-control-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border:1px solid #e5e6eb;border-radius:8px;background:#fff;color:#4e5969;font-size:13px;cursor:pointer;transition:.2s}
+.mm-control-btn:hover,.mm-control-btn.active{border-color:#165dff;color:#165dff;background:#e8f0ff}
+.mm-login-divider{display:flex;align-items:center;gap:12px;margin:22px 0 14px;color:#86909c;font-size:12px}
+.mm-login-divider:before,.mm-login-divider:after{content:"";height:1px;background:#e5e6eb;flex:1}
+.mm-face-login-btn{width:100%;height:44px;border:1px solid #165dff;border-radius:10px;background:#fff;color:#165dff;font-size:15px;cursor:pointer}
+.mm-face-login-btn:hover{background:#e8f0ff}
+.mm-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.mm-modal{width:min(520px,100%);background:#fff;border-radius:16px;box-shadow:0 20px 70px rgba(0,0,0,.25);padding:20px}
+.mm-modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.mm-modal-title{font-size:18px;font-weight:600;color:#1d2129}
+.mm-modal-close{border:0;background:transparent;font-size:24px;line-height:1;color:#86909c;cursor:pointer}
+.mm-video-wrap{position:relative;overflow:hidden;border-radius:12px;background:#111;aspect-ratio:4/3}
+.mm-video-wrap video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.mm-status{margin:12px 0;padding:10px 12px;border-radius:8px;background:#f7f8fa;color:#4e5969;font-size:13px;line-height:1.5}
+.mm-form-row{margin:12px 0}
+.mm-form-row label{display:block;font-size:13px;color:#4e5969;margin-bottom:6px}
+.mm-form-row input{width:100%;height:40px;padding:0 12px;border:1px solid #e5e6eb;border-radius:8px;box-sizing:border-box}
+.mm-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
+.mm-btn{height:40px;padding:0 16px;border-radius:8px;border:1px solid #e5e6eb;background:#fff;color:#4e5969;cursor:pointer}
+.mm-btn.primary{border-color:#165dff;background:#165dff;color:#fff}
+.mm-btn.danger{border-color:#ff4d4f;color:#ff4d4f}
+.mm-privacy{font-size:12px;color:#86909c;margin-top:10px;line-height:1.5}
+.mm-gesture-hint{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.mm-gesture-hint div{padding:8px;border-radius:8px;background:#f7f8fa;text-align:center;font-size:12px;color:#4e5969}
+@media(max-width:768px){.mm-control-btn span{display:none}.mm-control-btn{padding:8px}.mm-modal{padding:16px}}
