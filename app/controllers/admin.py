@@ -43,6 +43,10 @@ def deep_collect_with_crawl4ai(url):
 		raise ValueError(f"URL 不合法或存在 SSRF 风险，已拒绝: {url}")
 
 	import asyncio
+	import logging
+	logger = logging.getLogger(__name__)
+	logger.info("开始 crawl4ai 深度采集: %s", url)
+
 	from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 	from crawl4ai.content_filter_strategy import PruningContentFilter
 	from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
@@ -66,12 +70,19 @@ def deep_collect_with_crawl4ai(url):
 	asyncio.set_event_loop(loop)
 	try:
 		result = loop.run_until_complete(do_crawl())
+	except Exception as e:
+		logger.exception("crawl4ai 采集异常: %s", url)
+		return {'title': None, 'content': None, 'success': False, 'error': f'采集执行异常: {str(e)}'}
 	finally:
-		loop.close()
+		try:
+			loop.close()
+		except Exception:
+			pass
 
 	if result.success:
 		title = result.metadata.get('title') if result.metadata else None
 		content = result.markdown if result.markdown else None
+		logger.info("crawl4ai 采集成功: %s, 内容长度: %d", url, len(content) if content else 0)
 		return {
 			'title': title,
 			'content': content,
@@ -79,6 +90,7 @@ def deep_collect_with_crawl4ai(url):
 		}
 	else:
 		error_msg = result.error_message if hasattr(result, 'error_message') else '未知错误'
+		logger.warning("crawl4ai 采集失败: %s, 错误: %s", url, error_msg)
 		return {
 			'title': None,
 			'content': None,

@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="xsrf-token" content="{{ handler.xsrf_token }}">
   <title>{{ title }}</title>
   
   <!-- 引入Layui -->
@@ -393,6 +394,15 @@
     return r ? r[1] : undefined;
   }
   
+  // 优先从服务端下发的 meta 标签读取 XSRF 令牌，避免 cookie 读取/签名不一致问题
+  function getXsrfToken() {
+    var meta = document.querySelector('meta[name="xsrf-token"]');
+    if (meta && meta.getAttribute('content')) {
+      return meta.getAttribute('content');
+    }
+    return getCookie('_xsrf');
+  }
+  
   layui.use(['element', 'layer', 'jquery'], function() {
     var element = layui.element;
     var layer = layui.layer;
@@ -455,7 +465,7 @@
       }, function(index) {
         var form = $('<form method="post" action="/admin/logout" style="display:none;"></form>');
         
-        var xsrfToken = getCookie('_xsrf');
+        var xsrfToken = getXsrfToken();
         if (xsrfToken) {
           var xsrfInput = $('<input type="hidden" name="_xsrf">').val(xsrfToken);
           form.append(xsrfInput);

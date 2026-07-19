@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block body %}
 <div class="layui-body-content" style="padding: 20px;">
@@ -242,7 +242,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                 body: new URLSearchParams({
                     action: 'delete',
                     id: id,
-                    _xsrf: getCookie('_xsrf')
+                    _xsrf: getXsrfToken()
                 })
             }).then(res => res.json())
             .then(data => {
@@ -268,9 +268,17 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: new URLSearchParams({
                 action: 'get_employees',
-                _xsrf: getCookie('_xsrf')
+                _xsrf: getXsrfToken()
             })
-        }).then(res => res.json())
+        }).then(function(res){
+            if(!res.ok){
+                if(res.status === 403){
+                    throw new Error('登录会话已过期，请重新登录');
+                }
+                throw new Error('HTTP ' + res.status);
+            }
+            return res.json();
+        })
         .then(data => {
             if(data.code === 0) {
                 var select = document.getElementById(selectId);
@@ -312,7 +320,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
             body: new URLSearchParams({
                 action: 'get_deep_task',
                 id: id,
-                _xsrf: getCookie('_xsrf')
+                _xsrf: getXsrfToken()
             })
         }).then(res => res.json())
         .then(data => {
@@ -374,9 +382,17 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                 id: currentDeepCollectId,
                 employee_id: employeeId,
                 employee_name: employeeName,
-                _xsrf: getCookie('_xsrf')
+                _xsrf: getXsrfToken()
             })
-        }).then(res => res.json())
+        }).then(function(res){
+            if(!res.ok){
+                if(res.status === 403){
+                    throw new Error('登录会话已过期，请重新登录');
+                }
+                throw new Error('HTTP ' + res.status);
+            }
+            return res.json();
+        })
         .then(data => {
             if(data.code === 0) {
                 currentTaskId = data.task_id;
@@ -387,6 +403,10 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                 document.getElementById('statusBadge').className = 'layui-badge layui-bg-red';
                 document.getElementById('statusBadge').textContent = '启动失败';
             }
+        }).catch(function(err){
+            layer.msg('启动深度采集失败: ' + err, {icon: 2});
+            document.getElementById('statusBadge').className = 'layui-badge layui-bg-red';
+            document.getElementById('statusBadge').textContent = '启动失败';
         });
     }
     
@@ -400,7 +420,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                     body: new URLSearchParams({
                         action: 'get_deep_task',
                         id: currentDeepCollectId,
-                        _xsrf: getCookie('_xsrf')
+                        _xsrf: getXsrfToken()
                     })
                 }).then(res => res.json())
                 .then(data => {
@@ -499,7 +519,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
             body: new URLSearchParams({
                 action: 'get_deep_task',
                 id: id,
-                _xsrf: getCookie('_xsrf')
+                _xsrf: getXsrfToken()
             })
         }).then(res => res.json())
         .then(data => {
@@ -581,7 +601,7 @@ layui.use(['laypage', 'layer', 'form', 'jquery'], function(lp, ly, fm, jq){
                         ids: JSON.stringify(ids),
                         employee_id: employeeId,
                         employee_name: employeeName,
-                        _xsrf: getCookie('_xsrf')
+                        _xsrf: getXsrfToken()
                     })
                 }).then(res => res.json())
                 .then(data => {

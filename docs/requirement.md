@@ -147,7 +147,7 @@ DataFinderAgentOS 是一款政务智能瞭望与智能问数系统，基于 Torn
 
 14. **任务7.1：前台数字员工与对话体验修复（v0.1 新增）**
     - **用户消息换行修复**：前台用户消息展示由 `white-space: pre-wrap` 调整为 `white-space: normal`，实现与 AI 回复一致的字满换行效果，避免异常换行
-    - **@采集专员深度采集**：前台 `@采集专员` 触发时自动提取用户消息中的 URL，使用 crawl4ai 进行瞭望采集（保存到 `data_warehouse`）并进一步创建深度采集任务（写入 `deep_collected_data`），最后以表格卡片形式推送采集结果
+    - **@采集专员深度采集**：前台 `@采集专员 <网页链接>` 触发时自动提取用户消息中的第一个 http/https URL（兼容中文标点边界），使用 crawl4ai 进行瞭望采集（保存到 `data_warehouse`）并进一步创建深度采集任务（写入 `deep_collected_data`）；成功后直接向用户返回标题与正文内容（前 3000 字符）及表格卡片，不再经过模型引擎；未检测到 URL 时提示用户粘贴链接
     - **历史记录卡片持久化**：`chat_messages` 表新增 `card_type`、`card_data` 字段，AI 回复生成卡片时同步持久化；加载历史会话时重新调用 `renderCard()` 渲染，保证 `@天气` 等卡片在历史记录中不会失效
     - **左侧数字员工工具栏补全**：前台左侧边栏"数字员工"分类中新增 `@随机音乐`、`@新闻`、`@文案写作助手`、`@小智`、`@采集专员` 入口，与 `@天气` 一起形成完整的默认数字员工快捷入口
     - **@文案写作助手提示文件落地**：提示文件统一维护在 `docs/prompts/WriteToolsAgent/` 下，同时保留 `temp/WriteToolsAgent/Docs/` 与 `temp/` 作为兼容回退；初始化数据库时按优先级将 `role.md`、`constraint.md`、`scene.md`、`template.md` 按角色→约束→场景→模板顺序复制到 `data/dgUser/{employee_id}/` 并注入 System Prompt；严格按"关键词 → 10 主题 → 选编号 → 三类大纲 → 选风格 → 逐章正文"的交互流程执行

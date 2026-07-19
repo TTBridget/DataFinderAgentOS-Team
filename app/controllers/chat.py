@@ -1110,89 +1110,122 @@ class ChatHandler(BaseHandler):
 		# 若当前员工是采集专员且启用了网页抓取，尝试从用户消息中提取 URL 并采集内容
 		collected_context = ""
 		if mentioned_employee and mentioned_employee["name"] == "采集专员" and mentioned_employee.get("use_crawl4ai") == 1:
-			urls = re.findall(r'https?://[^\s<>"\']+', message)
-			if urls:
-				target_url = urls[0]
-				# SSRF 防护：采集前校验 URL 合法性（拒绝私有 IP / 非 HTTP 协议）
-				if not validate_http_url(target_url):
-					self.write("data: " + json.dumps({"error": f"URL 不合法或禁止访问内网地址: {target_url}"}) + "\n\n")
+			# 提取 URL：兼容中文标点、括号等常见边界
+			urls = re.findall(r'https?://[^\s<>"\'\u3002\u3001\uff0c\uff1b\uff1a\uff08\uff09\u300a\u300b\u3010\u3011\u201c\u201d]+', message)
+			if not urls:
+				# 没有检测到 URL，直接提示用户粘贴链接，不再调用模型引擎
+				help_msg = "请输入要采集的新闻/网页链接，例如：\n@采集专员 https://example.com/news"
+				self.write("data: " + json.dumps({"content": help_msg}) + "\n\n")
+				self.flush()
+				meta = _save_assistant_message(help_msg, employee_id=mentioned_employee["id"])
+				_send_meta(meta)
+				self.write("event: done\ndata: {}\n\n")
+				self.flush()
+				return
+
+			target_url = urls[0]
+			# SSRF 防护：采集前校验 URL 合法性（拒绝私有 IP / 非 HTTP 协议）
+			if not validate_http_url(target_url):
+				error_msg = f"URL 不合法或禁止访问内网地址: {target_url}"
+				self.write("data: " + json.dumps({"content": error_msg}) + "\n\n")
+				self.flush()
+				meta = _save_assistant_message(error_msg, employee_id=mentioned_employee["id"])
+				_send_meta(meta)
+				self.write("event: done\ndata: {}\n\n")
+				self.flush()
+				return
+
+			self.write("data: " + json.dumps({"content": f"正在采集 {target_url} 的详细内容，请稍候..."}) + "\n\n")
+			self.flush()
+			try:
+				crawl_result = await _deep_collect_async(target_url)
+				if crawl_result.get("success"):
+					title = crawl_result.get("title") or "未获取标题"
+					content = crawl_result.get("content") or ""
+					word_count = len(content)
+
+					# 1. 瞭望采集：将原始采集结果保存到数据仓库
+					warehouse_id = DataWarehouseRepository.save_data(
+						source_id=0,
+						title=title,
+						url=target_url,
+						content=content[:2000],
+						publish_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+						source_name="前台@采集专员",
+						keyword=message[:100]
+					)
+
+					# 2. 进一步深度采集：创建并执行深度采集任务
+					task_id = DataWarehouseRepository.create_deep_collect_task(
+						warehouse_id,
+						employee_id=mentioned_employee["id"],
+						employee_name=mentioned_employee["name"]
+					)
+					DataWarehouseRepository.update_deep_collect_task(task_id, status='running', progress=30)
+					DataWarehouseRepository.add_deep_collect_step(task_id, '网页内容提取', 'completed')
+					DataWarehouseRepository.add_deep_collect_log(task_id, f'URL: {target_url}', 'info')
+					result_data = json.dumps({
+						'title': title,
+						'url': target_url,
+						'content': content,
+						'word_count': word_count,
+						'original_content': content[:2000]
+					}, ensure_ascii=False)
+					DataWarehouseRepository.update_deep_collect_task(
+						task_id,
+						status='completed',
+						progress=100,
+						result_data=result_data,
+						title=title,
+						content=content,
+						url=target_url,
+						word_count=word_count
+					)
+					DataWarehouseRepository.add_deep_collect_step(task_id, '整理结构化数据', 'completed')
+					DataWarehouseRepository.add_deep_collect_log(task_id, '深度采集完成', 'info')
+					DataWarehouseRepository.toggle_deep_collected(warehouse_id, 1)
+
+					# 3. 向前台推送采集结果卡片
+					card_data = _build_collect_card_data(warehouse_id, title, target_url, word_count, "已深度采集")
+					assistant_card_type = "table"
+					assistant_card_data = [card_data]
+
+					# 限制正文展示长度，避免消息过长
+					display_content = content
+					if len(display_content) > 3000:
+						display_content = display_content[:3000] + "\n...（内容已截断，完整内容已保存至数据仓库）"
+					result_text = f"【采集结果】\n标题：{title}\nURL：{target_url}\n正文字数：{word_count}\n\n{display_content}"
+					self.write("data: " + json.dumps({"content": result_text}) + "\n\n")
 					self.flush()
+					self.write("data: " + json.dumps({"type": "card", "card_type": "table", "card_data": [card_data]}) + "\n\n")
+					self.flush()
+
+					# 保存采集结果消息，不再继续调用 LLM，直接结束本次请求
+					meta = _save_assistant_message(result_text, employee_id=mentioned_employee["id"])
+					_send_meta(meta)
 					self.write("event: done\ndata: {}\n\n")
 					self.flush()
 					return
-				self.write("data: " + json.dumps({"content": f"正在采集 {target_url} 的详细内容，请稍候..."}) + "\n\n")
-				self.flush()
-				try:
-					crawl_result = await _deep_collect_async(target_url)
-					if crawl_result.get("success"):
-						title = crawl_result.get("title") or "未获取标题"
-						content = crawl_result.get("content") or ""
-						word_count = len(content)
-
-						# 1. 瞭望采集：将原始采集结果保存到数据仓库
-						warehouse_id = DataWarehouseRepository.save_data(
-							source_id=0,
-							title=title,
-							url=target_url,
-							content=content[:2000],
-							publish_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-							source_name="前台@采集专员",
-							keyword=message[:100]
-						)
-
-						# 2. 进一步深度采集：创建并执行深度采集任务
-						task_id = DataWarehouseRepository.create_deep_collect_task(
-							warehouse_id,
-							employee_id=mentioned_employee["id"],
-							employee_name=mentioned_employee["name"]
-						)
-						DataWarehouseRepository.update_deep_collect_task(task_id, status='running', progress=30)
-						DataWarehouseRepository.add_deep_collect_step(task_id, '网页内容提取', 'completed')
-						DataWarehouseRepository.add_deep_collect_log(task_id, f'URL: {target_url}', 'info')
-						result_data = json.dumps({
-							'title': title,
-							'url': target_url,
-							'content': content,
-							'word_count': word_count,
-							'original_content': content[:2000]
-						}, ensure_ascii=False)
-						DataWarehouseRepository.update_deep_collect_task(
-							task_id,
-							status='completed',
-							progress=100,
-							result_data=result_data,
-							title=title,
-							content=content,
-							url=target_url,
-							word_count=word_count
-						)
-						DataWarehouseRepository.add_deep_collect_step(task_id, '整理结构化数据', 'completed')
-						DataWarehouseRepository.add_deep_collect_log(task_id, '深度采集完成', 'info')
-						DataWarehouseRepository.toggle_deep_collected(warehouse_id, 1)
-
-						# 3. 向前台推送采集结果卡片
-						card_data = _build_collect_card_data(warehouse_id, title, target_url, word_count, "已深度采集")
-						assistant_card_type = "table"
-						assistant_card_data = [card_data]
-						self.write("data: " + json.dumps({"content": _render_collect_card_text(card_data)}) + "\n\n")
-						self.flush()
-						self.write("data: " + json.dumps({"type": "card", "card_type": "table", "card_data": [card_data]}) + "\n\n")
-						self.flush()
-
-						# 限制上下文长度，避免超出模型上下文
-						max_content_len = 6000
-						if len(content) > max_content_len:
-							content = content[:max_content_len] + "\n...（内容已截断）"
-						collected_context = f"【采集到的网页内容】\n标题：{title}\nURL：{target_url}\n正文：\n{content}\n\n请基于以上内容回答用户问题，并可生成表格或报表呈现关键数据。"
-					else:
-						error = crawl_result.get('error', '未知错误')
-						collected_context = f"【采集提示】网页 {target_url} 采集失败：{error}，请用户提供可访问的链接或补充描述。"
-						self.write("data: " + json.dumps({"content": collected_context}) + "\n\n")
-						self.flush()
-				except Exception as e:
-					collected_context = f"【采集提示】采集过程发生异常：{str(e)}，请稍后重试。"
-					self.write("data: " + json.dumps({"content": collected_context}) + "\n\n")
+				else:
+					error = crawl_result.get('error', '未知错误')
+					error_msg = f"网页 {target_url} 采集失败：{error}，请检查链接是否可访问或补充描述。"
+					self.write("data: " + json.dumps({"content": error_msg}) + "\n\n")
 					self.flush()
+					meta = _save_assistant_message(error_msg, employee_id=mentioned_employee["id"])
+					_send_meta(meta)
+					self.write("event: done\ndata: {}\n\n")
+					self.flush()
+					return
+			except Exception as e:
+				logger.exception("@采集专员 前台采集异常")
+				error_msg = f"采集过程发生异常：{str(e)}，请稍后重试。"
+				self.write("data: " + json.dumps({"content": error_msg}) + "\n\n")
+				self.flush()
+				meta = _save_assistant_message(error_msg, employee_id=mentioned_employee["id"])
+				_send_meta(meta)
+				self.write("event: done\ndata: {}\n\n")
+				self.flush()
+				return
 		
 		# 添加当前消息
 		final_user_content = message
