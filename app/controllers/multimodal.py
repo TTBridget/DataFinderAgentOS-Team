@@ -113,7 +113,8 @@ class FaceEnrollHandler(BaseHandler):
 
         body = _json_body(self)
         password = str(body.get("password") or "")
-        if not password or not UserRepository.verify_user(user["username"], password):
+        valid, _ = UserRepository.verify_user(user["username"], password)
+        if not password or not valid:
             return _write_json(self, 1, "当前密码验证失败", status=403)
 
         try:
@@ -142,7 +143,8 @@ class FaceDeleteHandler(BaseHandler):
 
         body = _json_body(self)
         password = str(body.get("password") or "")
-        if not password or not UserRepository.verify_user(user["username"], password):
+        valid, _ = UserRepository.verify_user(user["username"], password)
+        if not password or not valid:
             return _write_json(self, 1, "当前密码验证失败", status=403)
 
         FaceProfileRepository.delete(user["id"])

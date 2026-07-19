@@ -27,7 +27,11 @@ def webapp():
 	base_dir = os.path.dirname(os.path.abspath(__file__))
 	cookie_secret = os.environ.get('COOKIE_SECRET')
 	if not cookie_secret:
-		raise RuntimeError("COOKIE_SECRET 环境变量未设置，请在启动前配置安全的随机密钥")
+		# 开发环境回退：自动生成随机密钥（每次重启所有会话失效）
+		import secrets
+		cookie_secret = secrets.token_hex(32)
+		print("⚠ COOKIE_SECRET 环境变量未设置，已自动生成临时密钥。", flush=True)
+		print("  生产环境请务必在环境变量中设置 COOKIE_SECRET。", flush=True)
 	debug = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
 	settings = dict(
 		template_path=os.path.join(base_dir,"app","templates"),

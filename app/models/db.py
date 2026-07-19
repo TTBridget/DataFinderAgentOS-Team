@@ -99,6 +99,47 @@ def _migrate_menu_structure(conn):
 	
 	print("菜单结构迁移完成")
 
+def _migrate_brute_force_protection(conn):
+	"""为 admins 和 users 表添加暴力破解防护相关列（failed_attempts, lock_until）"""
+	# SQLite 不支持 ALTER TABLE ADD COLUMN IF NOT EXISTS，使用 try/except 处理
+	tables = ["admins", "users"]
+	for table in tables:
+		for column, col_def in [("failed_attempts", "INTEGER DEFAULT 0"), ("lock_until", "TEXT DEFAULT NULL")]:
+			try:
+				conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
+			except sqlite3.OperationalError:
+				# 列已存在，跳过
+				pass
+	print("暴力破解防护迁移完成")
+
+def _migrate_encrypt_api_keys(conn):
+	"""将 ai_models 表中未加密的 api_key 加密存储（向后兼容迁移）"""
+	from ..utils.crypto import encrypt, is_encrypted
+	
+	rows = conn.execute("SELECT id, api_key FROM ai_models WHERE api_key IS NOT NULL AND api_key != ''").fetchall()
+	updated = 0
+	for row in rows:
+		api_key = row["api_key"]
+		if not is_encrypted(api_key):
+			encrypted_key = encrypt(api_key)
+			conn.execute("UPDATE ai_models SET api_key = ? WHERE id = ?", (encrypted_key, row["id"]))
+			updated += 1
+	
+	if updated > 0:
+		print(f"已加密 {updated} 个存量明文 API Key")
+	else:
+		print("无需加密存量 API Key（已全部加密或无数据）")
+
+def _migrate_super_admin(conn):
+	"""为 admins 表添加 is_super_admin 列，并将现有 admin 账号设置为超级管理员"""
+	try:
+		conn.execute("ALTER TABLE admins ADD COLUMN is_super_admin INTEGER DEFAULT 0")
+	except sqlite3.OperationalError:
+		pass
+	# 将现有的 admin 用户设置为超级管理员（仅当该列刚被添加或尚未设置时）
+	conn.execute("UPDATE admins SET is_super_admin = 1 WHERE username = 'admin' AND (is_super_admin IS NULL OR is_super_admin = 0)")
+	print("超级管理员迁移完成")
+
 def init_db():
 	with get_connection() as conn:
 		# 创建用户表（更新）
@@ -185,6 +226,7 @@ def init_db():
 				password_hash TEXT NOT NULL,
 				salt TEXT NOT NULL,
 				role_id INTEGER DEFAULT 2,
+				is_super_admin INTEGER DEFAULT 0,
 				is_disabled INTEGER DEFAULT 0,
 				created_at TEXT NOT NULL DEFAULT(datetime('now','localtime')),
 				updated_at TEXT NOT NULL DEFAULT(datetime('now','localtime'))
@@ -275,7 +317,7 @@ def init_db():
 			salt = secrets.token_bytes(16)
 			password_hash = _hash_password(default_password, salt)
 			conn.execute(
-				"INSERT INTO admins (username, password_hash, salt, role_id) VALUES (?, ?, ?, ?)",
+				"INSERT INTO admins (username, password_hash, salt, role_id, is_super_admin) VALUES (?, ?, ?, ?, 1)",
 				("admin", password_hash, salt.hex(), 2)
 			)
 			print(f"默认超级管理员创建成功！用户名: admin, 密码: {display_password}")
@@ -1068,3 +1110,12 @@ def init_db():
 			SystemSettings.init_settings()
 		except:
 			pass
+
+		# 暴力破解防护迁移：为 admins 和 users 表添加锁定相关列
+		_migrate_brute_force_protection(conn)
+
+		# 超级管理员迁移：添加 is_super_admin 列并设置默认 admin 为超级管理员
+		_migrate_super_admin(conn)
+
+		# API Key 加密迁移：将 ai_models 表中的明文 api_key 加密存储
+		_migrate_encrypt_api_keys(conn)

@@ -269,7 +269,11 @@ class PublicSentimentSensitiveWordsHandler(AdminBaseHandler):
 
 
 class PublicSentimentScanHandler(AdminBaseHandler):
-    """手动扫描数据"""
+    """手动扫描数据（带分页 + 上限 + 超时防护）"""
+    
+    BATCH_SIZE = 500       # 每批处理行数
+    MAX_ROWS = 20000       # 单次扫描最大行数
+    TIME_LIMIT = 60        # 单次扫描最大秒数
     
     @authenticated
     def post(self):
@@ -278,41 +282,97 @@ class PublicSentimentScanHandler(AdminBaseHandler):
             scan_type = body.get("scan_type", "")
         except:
             scan_type = self.get_body_argument("scan_type", "")
+        
+        import time
+        start_time = time.time()
         count = 0
+        scanned_rows = 0
+        
+        # 一次性预加载所有敏感词（避免每行重复查询）
+        words = SensitiveWordService.get_all_words()
+        if not words:
+            self.write({"code": 0, "msg": "暂无敏感词，扫描完成"})
+            return
         
         if scan_type == "chat":
-            with __import__('app.models.db').models.db.get_connection() as conn:
-                rows = conn.execute("SELECT m.*, s.user_id, u.username FROM chat_messages m "
-                                   "JOIN chat_sessions s ON m.session_id = s.id "
-                                   "JOIN users u ON s.user_id = u.id").fetchall()
-                for row in rows:
-                    matches = SensitiveWordService.scan_content(row["content"])
-                    if matches:
-                        SensitiveWordService.scan_and_create_alerts(
-                            row["user_id"],
-                            row["username"],
-                            row["content"],
+            import app.models.db as db_module
+            with db_module.get_connection() as conn:
+                offset = 0
+                while scanned_rows < self.MAX_ROWS:
+                    # 超时检查
+                    if time.time() - start_time > self.TIME_LIMIT:
+                        break
+                    
+                    rows = conn.execute(
+                        "SELECT m.*, s.user_id, u.username FROM chat_messages m "
+                        "JOIN chat_sessions s ON m.session_id = s.id "
+                        "JOIN users u ON s.user_id = u.id "
+                        "LIMIT ? OFFSET ?",
+                        (self.BATCH_SIZE, offset)
+                    ).fetchall()
+                    
+                    if not rows:
+                        break
+                    
+                    # 扫描当前批次并收集匹配结果
+                    matched_rows = []
+                    for row in rows:
+                        matches = SensitiveWordService.scan_content(row["content"], words=words)
+                        if matches:
+                            matched_rows.append((row, matches))
+                    
+                    # 批量创建预警（一次 DB 连接）
+                    if matched_rows:
+                        count += SensitiveWordService.scan_and_create_alerts_batch(
+                            matched_rows,
                             "chat",
-                            row["session_id"],
-                            f"会话ID:{row['session_id']}"
+                            get_user_id=lambda r: r["user_id"],
+                            get_user_name=lambda r: r["username"],
+                            get_content=lambda r: r["content"],
+                            get_source_id=lambda r: r["session_id"],
+                            get_source_name=lambda r: f"会话ID:{r['session_id']}"
                         )
-                        count += 1
+                    
+                    scanned_rows += len(rows)
+                    offset += self.BATCH_SIZE
         
         elif scan_type == "collected":
-            with __import__('app.models.db').models.db.get_connection() as conn:
-                rows = conn.execute("SELECT * FROM collected_data").fetchall()
-                for row in rows:
-                    content = (row["title"] or "") + " " + (row["content"] or "")
-                    matches = SensitiveWordService.scan_content(content)
-                    if matches:
-                        SensitiveWordService.scan_and_create_alerts(
-                            None,
-                            row["source_name"] or "系统",
-                            content,
+            import app.models.db as db_module
+            with db_module.get_connection() as conn:
+                offset = 0
+                while scanned_rows < self.MAX_ROWS:
+                    if time.time() - start_time > self.TIME_LIMIT:
+                        break
+                    
+                    rows = conn.execute(
+                        "SELECT * FROM collected_data LIMIT ? OFFSET ?",
+                        (self.BATCH_SIZE, offset)
+                    ).fetchall()
+                    
+                    if not rows:
+                        break
+                    
+                    matched_rows = []
+                    for row in rows:
+                        content = (row["title"] or "") + " " + (row["content"] or "")
+                        matches = SensitiveWordService.scan_content(content, words=words)
+                        if matches:
+                            matched_rows.append((row, matches))
+                    
+                    if matched_rows:
+                        count += SensitiveWordService.scan_and_create_alerts_batch(
+                            matched_rows,
                             "collected",
-                            row["id"],
-                            row["source_name"] or "采集数据"
+                            get_user_id=lambda r: None,
+                            get_user_name=lambda r: r["source_name"] or "系统",
+                            get_content=lambda r: (r["title"] or "") + " " + (r["content"] or ""),
+                            get_source_id=lambda r: r["id"],
+                            get_source_name=lambda r: r["source_name"] or "采集数据"
                         )
-                        count += 1
+                    
+                    scanned_rows += len(rows)
+                    offset += self.BATCH_SIZE
         
-        self.write({"code": 0, "msg": f"扫描完成，共发现 {count} 条敏感内容"})
+        elapsed = round(time.time() - start_time, 1)
+        truncated = "（已达到扫描上限）" if scanned_rows >= self.MAX_ROWS else ""
+        self.write({"code": 0, "msg": f"已扫描 {scanned_rows} 行（耗时 {elapsed}s），共发现 {count} 条敏感内容{truncated}"})

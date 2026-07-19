@@ -5,3 +5,4 @@ lxml
 crawl4ai
 sqlparse
 fpdf2>=2.7,<3
+cryptography

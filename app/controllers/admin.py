@@ -5,6 +5,8 @@
 import tornado.web
 import datetime
 import json
+import time
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from app.controllers.base import BaseHandler, AdminBaseHandler
 from app.models.admin import AdminRepository
@@ -36,6 +38,10 @@ _MAX_BATCH_COLLECT_SIZE = 50
 
 def deep_collect_with_crawl4ai(url):
 	"""使用 crawl4ai 进行深度采集"""
+	# SSRF 防护：校验 URL 合法性，禁止内部地址、非 HTTP(S) 协议
+	if not validate_http_url(url):
+		raise ValueError(f"URL 不合法或存在 SSRF 风险，已拒绝: {url}")
+
 	import asyncio
 	from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 	from crawl4ai.content_filter_strategy import PruningContentFilter
@@ -84,10 +90,34 @@ def deep_collect_with_crawl4ai(url):
 class AdminLoginHandler(BaseHandler):
 	"""后台登录页"""
 	
+	# 基于 IP 的内存速率限制：每个 IP 每分钟最多 5 次 POST 请求
+	_RATE_LIMIT_WINDOW = 60          # 窗口：60 秒
+	_RATE_LIMIT_MAX = 5              # 最大尝试次数
+	_rate_limit_records = defaultdict(list)
+	
+	@classmethod
+	def _check_rate_limit(cls, ip: str) -> bool:
+		"""检查 IP 是否超过速率限制，返回 True 表示允许请求"""
+		now = time.time()
+		records = cls._rate_limit_records[ip]
+		# 清理过期记录
+		records[:] = [t for t in records if now - t < cls._RATE_LIMIT_WINDOW]
+		if len(records) >= cls._RATE_LIMIT_MAX:
+			return False
+		records.append(now)
+		return True
+	
 	def get(self):
 		self.render("admin/login.html", title="后台管理登录", error=None)
 	
 	def post(self):
+		# IP 速率限制检查
+		remote_ip = self.request.remote_ip or "unknown"
+		if not AdminLoginHandler._check_rate_limit(remote_ip):
+			self.set_status(429)
+			return self.render("admin/login.html", title="后台管理登录",
+			                   error="登录尝试过于频繁，请稍后再试")
+		
 		username = self.get_body_argument("username", "")
 		password = self.get_body_argument("password", "")
 		
@@ -96,10 +126,18 @@ class AdminLoginHandler(BaseHandler):
 			return self.render("admin/login.html", title="后台管理登录", error="请输入用户名和密码")
 		
 		# 使用 AdminRepository 验证管理员
-		if AdminRepository.verify_admin(username, password):
-			self.set_secure_cookie("admin_username", username)
+		valid, reason = AdminRepository.verify_admin(username, password)
+		if valid:
+			self.set_secure_cookie(
+				"admin_username",
+				username,
+				httponly=True,
+				samesite="Lax",
+				secure=self.request.protocol == "https",
+			)
 			self.redirect("/admin/")
 		else:
+			# 统一返回模糊错误信息，防止用户名枚举
 			self.set_status(401)
 			return self.render("admin/login.html", title="后台管理登录", error="用户名或密码不正确")
 
@@ -136,6 +174,7 @@ class AdminIndexHandler(AdminBaseHandler):
 
 
 class UserManageHandler(AdminBaseHandler):
+	REQUIRED_FUNCTION = "user"
 	"""用户管理"""
 	
 	@tornado.web.authenticated
@@ -147,16 +186,24 @@ class UserManageHandler(AdminBaseHandler):
 		users_result = UserRepository.get_all_users(page, 20, search)
 		admins_result = AdminRepository.get_all_admins(page, 20, search)
 		
+		# 获取当前登录管理员的完整信息（用于 is_super_admin 判断）
+		current_admin = AdminRepository.get_admin_by_username(self.current_user)
+		current_is_super_admin = current_admin["is_super_admin"] if current_admin else 0
+		
 		# 合并用户列表，添加类型标识
 		users = []
 		for u in users_result["items"]:
 			u_dict = dict(u)
 			u_dict["user_type"] = "user"
+			u_dict["is_super_admin"] = 0  # 普通用户不是超级管理员
 			users.append(u_dict)
 		
 		for a in admins_result["items"]:
 			a_dict = dict(a)
 			a_dict["user_type"] = "admin"
+			# 确保 is_super_admin 存在（兼容旧数据）
+			if "is_super_admin" not in a_dict:
+				a_dict["is_super_admin"] = 0
 			users.append(a_dict)
 		
 		# 获取角色列表
@@ -166,6 +213,7 @@ class UserManageHandler(AdminBaseHandler):
 				   users=users, 
 				   roles=roles["items"],
 				   username=self.current_user,
+				   current_is_super_admin=current_is_super_admin,
 				   page=page,
 				   total=users_result["total"] + admins_result["total"])
 	
@@ -175,22 +223,22 @@ class UserManageHandler(AdminBaseHandler):
 		user_type = self.get_body_argument("user_type", "user")
 		user_id = self.get_body_argument("id", None)
 		
-		# 通用检查：是否操作超级管理员
+		# 获取当前登录管理员的 is_super_admin 状态
+		current_admin = AdminRepository.get_admin_by_username(self.current_user)
+		current_is_super_admin = current_admin.get("is_super_admin", 0) if current_admin else 0
+		
+		# 通用检查：目标用户是否是超级管理员
 		target_is_super_admin = False
 		if user_id:
 			if user_type == "admin":
 				target_admin = AdminRepository.get_admin_by_id(safe_int(user_id, 0))
-				if target_admin and target_admin["username"] == "admin":
+				if target_admin and target_admin["is_super_admin"] == 1:
 					target_is_super_admin = True
 		
 		if action == "add":
 			username = self.get_body_argument("username", "")
 			password = self.get_body_argument("password", "")
 			role_id = safe_int(self.get_body_argument("role_id", 1), 1)
-			
-			if username == "admin":
-				self.write({"code": 1, "msg": "不能创建超级管理员账号"})
-				return
 			
 			if user_type == "user":
 				success = UserRepository.create_user(username, password, role_id)
@@ -205,25 +253,25 @@ class UserManageHandler(AdminBaseHandler):
 		elif action == "edit":
 			# 检查是否操作超级管理员
 			if target_is_super_admin:
-				# 只有admin自己可以修改
-				if self.current_user != "admin":
+				# 只有超级管理员自己或另一个超级管理员可以修改
+				if not current_is_super_admin:
 					self.write({"code": 1, "msg": "无权修改超级管理员"})
 					return
 				
-				# admin自己只能修改密码，其他属性不能修改
+				# 超级管理员只能修改自己的密码，不能修改用户名或角色
 				username = self.get_body_argument("username", None)
 				password = self.get_body_argument("password", None)
 				role_id = self.get_body_argument("role_id", None)
 				
-				# 如果是修改admin自己
-				if username is not None or role_id is not None:
-					# 检查是否只修改密码
-					if username and username != "admin":
+				# 禁止修改超级管理员的基本信息
+				if username is not None:
+					target_admin = AdminRepository.get_admin_by_id(safe_int(user_id, 0))
+					if target_admin and username != target_admin["username"]:
 						self.write({"code": 1, "msg": "超级管理员用户名不可修改"})
 						return
-					if role_id is not None:
-						self.write({"code": 1, "msg": "超级管理员角色不可修改"})
-						return
+				if role_id is not None:
+					self.write({"code": 1, "msg": "超级管理员角色不可修改"})
+					return
 				
 				# 允许修改密码
 				if password:
@@ -287,6 +335,7 @@ class UserManageHandler(AdminBaseHandler):
 
 
 class RoleManageHandler(AdminBaseHandler):
+	REQUIRED_FUNCTION = "role"
 	"""角色管理"""
 	
 	@tornado.web.authenticated
@@ -359,6 +408,7 @@ class RoleManageHandler(AdminBaseHandler):
 
 
 class FunctionManageHandler(AdminBaseHandler):
+	REQUIRED_FUNCTION = "function"
 	"""功能管理"""
 	
 	@tornado.web.authenticated
@@ -423,6 +473,7 @@ class FunctionManageHandler(AdminBaseHandler):
 
 
 class MenuManageHandler(AdminBaseHandler):
+	REQUIRED_FUNCTION = "menu"
 	"""菜单管理"""
 	
 	@tornado.web.authenticated
@@ -450,6 +501,7 @@ class MenuManageHandler(AdminBaseHandler):
 
 
 class DataSourceManageHandler(AdminBaseHandler):
+	REQUIRED_FUNCTION = "data_source"
 	"""瞭源管理"""
 	
 	@tornado.web.authenticated
@@ -479,6 +531,11 @@ class DataSourceManageHandler(AdminBaseHandler):
 			is_enabled = safe_int(self.get_body_argument("is_enabled", 1), 1)
 			sort_order = safe_int(self.get_body_argument("sort_order", 0), 0)
 			
+			# SSRF 防护：校验 base_url 合法性（拒绝私有 IP / 非 HTTP 协议）
+			if base_url and not validate_http_url(base_url):
+				self.write({"code": 1, "msg": "Base URL 不合法或存在 SSRF 风险，请使用安全的公网地址"})
+				return
+			
 			sid = DataSourceRepository.create(name, description, base_url, path_template, headers, is_enabled, sort_order)
 			if sid:
 				self.write({"code": 0, "msg": "添加成功", "data": {"id": sid}})
@@ -493,6 +550,11 @@ class DataSourceManageHandler(AdminBaseHandler):
 			headers = self.get_body_argument("headers", None)
 			is_enabled = self.get_body_argument("is_enabled", None)
 			sort_order = self.get_body_argument("sort_order", None)
+			
+			# SSRF 防护：校验 base_url 合法性
+			if base_url and not validate_http_url(base_url):
+				self.write({"code": 1, "msg": "Base URL 不合法或存在 SSRF 风险，请使用安全的公网地址"})
+				return
 			
 			params = {}
 			if name is not None: params["name"] = name
@@ -514,7 +576,18 @@ class DataSourceManageHandler(AdminBaseHandler):
 			self.write({"code": 0, "msg": "删除成功"})
 
 
+def safe_url(url):
+	"""模板辅助函数：仅允许 http/https 协议的 URL，否则返回 #"""
+	if not url or not isinstance(url, str):
+		return "#"
+	url = url.strip()
+	if url.lower().startswith(("http://", "https://")):
+		return url
+	return "#"
+
+
 class WatchManageHandler(AdminBaseHandler):
+	REQUIRED_FUNCTION = "watch"
 	"""瞭望中心"""
 	
 	@tornado.web.authenticated
@@ -542,7 +615,8 @@ class WatchManageHandler(AdminBaseHandler):
 				   keyword=keyword,
 				   page=page,
 				   total=result["total"],
-				   username=self.current_user)
+				   username=self.current_user,
+				   safe_url=safe_url)
 	
 	@tornado.web.authenticated
 	def post(self):
@@ -583,6 +657,7 @@ class WatchManageHandler(AdminBaseHandler):
 
 
 class AiModelManageHandler(AdminBaseHandler):
+	REQUIRED_FUNCTION = "engine"
 	"""模型引擎管理"""
 	
 	@tornado.web.authenticated
@@ -671,6 +746,7 @@ class AiModelManageHandler(AdminBaseHandler):
 
 
 class AiModelChatHandler(AdminBaseHandler):
+	REQUIRED_FUNCTION = "engine"
 	"""模型对话接口 (SSE)"""
 	
 	@tornado.web.authenticated
@@ -779,6 +855,7 @@ class AiModelChatHandler(AdminBaseHandler):
 
 
 class DataWarehouseManageHandler(AdminBaseHandler):
+	REQUIRED_FUNCTION = "data_warehouse"
 	"""数据仓库管理"""
 	
 	@tornado.web.authenticated
@@ -806,10 +883,14 @@ class DataWarehouseManageHandler(AdminBaseHandler):
 				items = json.loads(data_json)
 				saved_count = 0
 				for item in items:
+					item_url = item.get("url", "")
+					# SSRF 防护：校验 URL 合法性，允许空 URL 跳过
+					if item_url and not validate_http_url(item_url, allow_empty=True):
+						continue
 					DataWarehouseRepository.save_data(
 						source_id=item.get("source_id"),
 						title=item.get("title", ""),
-						url=item.get("url", ""),
+						url=item_url,
 						content=item.get("content", ""),
 						publish_time=item.get("publish_time", ""),
 						source_name=item.get("source_name", ""),
@@ -860,6 +941,12 @@ class DataWarehouseManageHandler(AdminBaseHandler):
 			warehouse_item = DataWarehouseRepository.get_by_id(warehouse_id)
 			if not warehouse_item:
 				self.write({"code": 1, "msg": "数据不存在"})
+				return
+
+			# SSRF 防护：校验 URL 合法性
+			target_url = warehouse_item["url"]
+			if target_url and not validate_http_url(target_url, allow_empty=True):
+				self.write({"code": 1, "msg": f"URL 不合法或存在 SSRF 风险，已拒绝采集"})
 				return
 			
 			task_id = DataWarehouseRepository.create_deep_collect_task(warehouse_id, employee_id, employee_name)
@@ -967,6 +1054,13 @@ class DataWarehouseManageHandler(AdminBaseHandler):
 						if warehouse_item:
 							task_id = task_ids[i]
 							try:
+								# SSRF 防护：校验 URL 合法性
+								item_url = warehouse_item["url"]
+								if item_url and not validate_http_url(item_url, allow_empty=True):
+									DataWarehouseRepository.update_deep_collect_task(task_id, status='failed', error_message=f'URL 不合法或存在 SSRF 风险: {item_url}')
+									DataWarehouseRepository.add_deep_collect_log(task_id, f'采集被拒绝: {item_url} 存在 SSRF 风险', 'error')
+									continue
+
 								DataWarehouseRepository.update_deep_collect_task(task_id, status='running', progress=10)
 								DataWarehouseRepository.add_deep_collect_step(task_id, '初始化采集任务')
 								
@@ -974,7 +1068,7 @@ class DataWarehouseManageHandler(AdminBaseHandler):
 								DataWarehouseRepository.add_deep_collect_step(task_id, '执行网页内容提取')
 								
 								try:
-									crawl_result = deep_collect_with_crawl4ai(warehouse_item["url"])
+									crawl_result = deep_collect_with_crawl4ai(item_url)
 									
 									if crawl_result['success']:
 										title = crawl_result['title'] or warehouse_item["title"]
@@ -1021,6 +1115,7 @@ class DataWarehouseManageHandler(AdminBaseHandler):
 
 
 class DigitalEmployeeManageHandler(AdminBaseHandler):
+	REQUIRED_FUNCTION = "digital"
 	"""数字员工管理"""
 	
 	@tornado.web.authenticated
@@ -1112,10 +1207,15 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 			api_method = self.get_body_argument("api_method", None)
 			api_headers = self.get_body_argument("api_headers", None)
 			api_params = self.get_body_argument("api_params", None)
+			# 安全保护：空字符串不覆盖已有的敏感凭据（编辑表单已脱敏回填为空）
+			if api_headers is not None and api_headers.strip() == "":
+				api_headers = None
+			if api_params is not None and api_params.strip() == "":
+				api_params = None
 			card_type = self.get_body_argument("card_type", None)
-			
+
 			sort_order = self.get_body_argument("sort_order", None)
-			
+
 			# 若更新 api_url，需再次校验防止存储型 SSRF
 			if api_url and not validate_employee_api_url(api_url):
 				self.write({"code": 1, "msg": "API URL 不合法或存在 SSRF 风险"})
@@ -1162,7 +1262,15 @@ class DigitalEmployeeManageHandler(AdminBaseHandler):
 			emp_id = safe_int(self.get_body_argument("id", 0), 0)
 			employee = DigitalEmployeeRepository.get_by_id(emp_id)
 			if employee:
-				data = dict(employee)
+				# 白名单：仅返回安全的非敏感字段，排除 api_headers 和 api_params
+				_SAFE_DETAIL_FIELDS = (
+					"id", "name", "description", "type", "model_id", "model_name",
+					"system_prompt", "use_skills", "use_crawl4ai",
+					"api_interface_id", "interface_name",
+					"api_url", "api_method", "card_type",
+					"is_enabled", "sort_order", "created_at", "updated_at"
+				)
+				data = {k: employee[k] for k in _SAFE_DETAIL_FIELDS if k in employee.keys()}
 				data["nd_files"] = list_employee_nd_files(emp_id)
 				self.write({"code": 0, "data": data})
 			else:

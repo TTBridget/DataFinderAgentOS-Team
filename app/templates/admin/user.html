@@ -43,20 +43,20 @@
                         </td>
                         <td>{{ user['created_at'] }}</td>
                         <td>
-                            {% if user['username'] == 'admin' %}
+                            {% if user.get('is_super_admin') == 1 %}
                                 <span class="layui-badge layui-bg-orange">超级管理员</span>
                             {% else %}
-                                <button class="layui-btn layui-btn-xs" onclick="openEditModal({{ user['id'] }}, '{{ user['username'] }}', '{{ user['user_type'] }}', {{ user['role_id'] }})">编辑</button>
+                                <button class="layui-btn layui-btn-xs" onclick="openEditModal({{ user['id'] }}, '{{ user['username'] }}', '{{ user['user_type'] }}', {{ user['role_id'] }}, {{ user.get('is_super_admin', 0) }})">编辑</button>
                             {% end %}
-                            {% if user['username'] != 'admin' %}
+                            {% if user.get('is_super_admin') != 1 %}
                                 {% if user['is_disabled'] == 1 %}
                                 <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="toggleUser({{ user['id'] }}, '{{ user['user_type'] }}', 0)">启用</button>
                                 {% else %}
                                 <button class="layui-btn layui-btn-xs layui-btn-warm" onclick="toggleUser({{ user['id'] }}, '{{ user['user_type'] }}', 1)">禁用</button>
                                 {% end %}
                                 <button class="layui-btn layui-btn-xs layui-btn-danger" onclick="deleteUser({{ user['id'] }}, '{{ user['user_type'] }}')">删除</button>
-                            {% elif username == 'admin' %}
-                                <button class="layui-btn layui-btn-xs" onclick="openEditModal({{ user['id'] }}, '{{ user['username'] }}', '{{ user['user_type'] }}', {{ user['role_id'] }})">修改密码</button>
+                            {% elif current_is_super_admin == 1 %}
+                                <button class="layui-btn layui-btn-xs" onclick="openEditModal({{ user['id'] }}, '{{ user['username'] }}', '{{ user['user_type'] }}', {{ user['role_id'] }}, {{ user.get('is_super_admin', 0) }})">修改密码</button>
                             {% end %}
                         </td>
                     </tr>
@@ -171,7 +171,8 @@ layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
         });
     }
     
-    window.openEditModal = function(id, username, userType, roleId){
+    window.openEditModal = function(id, username, userType, roleId, isSuperAdmin){
+        isSuperAdmin = isSuperAdmin || 0;
         $('#action').val('edit');
         $('#userId').val(id);
         $('#username').val(username);
@@ -181,9 +182,9 @@ layui.use(['layer', 'form', 'laypage', 'jquery'], function(){
         $('#roleId').val(roleId);
         form.render('select');
         
-        // 检查是否是编辑admin用户
-        var isAdminUser = (username === 'admin');
-        var isCurrentUserAdmin = ('{{ username }}' === 'admin');
+        // 检查是否是编辑超级管理员
+        var isAdminUser = (isSuperAdmin === 1);
+        var isCurrentUserSuperAdmin = ({{ current_is_super_admin or 0 }} === 1);
         
         // 如果是编辑admin用户
         if(isAdminUser) {

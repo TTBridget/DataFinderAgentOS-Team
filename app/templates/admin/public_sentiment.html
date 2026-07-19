@@ -222,6 +222,16 @@
     </div>
 
     <script>
+    // HTML 实体转义：防止用户输入中的恶意脚本通过 innerHTML 执行
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;');
+    }
     layui.use(['element', 'table', 'layer', 'form', 'laydate'], function() {
       var element = layui.element;
       var table = layui.table;
@@ -590,7 +600,7 @@
           cols: [[
             { field: 'id', title: 'ID', width: 60 },
             { field: 'user_name', title: '用户', width: 100 },
-            { field: 'sensitive_word', title: '触发词', width: 100, templet: function(d) { return '<span style="color: #FF4D4F; font-weight: bold;">' + d.sensitive_word + '</span>'; } },
+            { field: 'sensitive_word', title: '触发词', width: 100, templet: function(d) { return '<span style="color: #FF4D4F; font-weight: bold;">' + escapeHtml(d.sensitive_word) + '</span>'; } },
             { field: 'category', title: '类别', width: 100, templet: function(d) {
               var categoryColors = {
                 '政治敏感': '#FF4D4F',
@@ -603,7 +613,7 @@
                 '迷信类': '#13C2C2',
                 '其他': '#94A3B8'
               };
-              return '<span style="color: ' + (categoryColors[d.category] || '#94A3B8') + '; font-weight: bold;">' + d.category + '</span>';
+              return '<span style="color: ' + (categoryColors[d.category] || '#94A3B8') + '; font-weight: bold;">' + escapeHtml(d.category) + '</span>';
             }},
             { field: 'content_type', title: '来源类型', width: 100, templet: function(d) { return d.content_type === 'chat' ? '对话' : '采集'; } },
             { field: 'source_name', title: '来源', width: 120 },
@@ -651,19 +661,19 @@
                   '</div>' +
                   '<div style="margin-bottom: 15px;">' +
                   '<label style="display: inline-block; width: 80px; font-weight: bold;">用户：</label>' +
-                  (alert.user_name || '系统') +
+                  escapeHtml(alert.user_name || '系统') +
                   '</div>' +
                   '<div style="margin-bottom: 15px;">' +
                   '<label style="display: inline-block; width: 80px; font-weight: bold;">触发词：</label>' +
-                  '<span style="color: #FF4D4F; font-weight: bold;">' + alert.sensitive_word + '</span>' +
+                  '<span style="color: #FF4D4F; font-weight: bold;">' + escapeHtml(alert.sensitive_word) + '</span>' +
                   '</div>' +
                   '<div style="margin-bottom: 15px;">' +
                   '<label style="display: inline-block; width: 80px; font-weight: bold;">来源：</label>' +
-                  alert.source_name +
+                  escapeHtml(alert.source_name) +
                   '</div>' +
                   '<div style="margin-bottom: 15px;">' +
                   '<label style="display: inline-block; width: 80px; font-weight: bold; vertical-align: top;">原文：</label>' +
-                  '<div style="display: inline-block; max-width: 480px; word-break: break-all;">' + alert.content + '</div>' +
+                  '<div style="display: inline-block; max-width: 480px; word-break: break-all;">' + escapeHtml(alert.content) + '</div>' +
                   '</div>' +
                   '<div style="margin-top: 20px; text-align: right;">' +
                   '<button class="layui-btn layui-btn-xs" onclick="handleAlert(' + alert.id + ', \'mark_handled\'); layer.closeAll();">标记已处理</button> ' +

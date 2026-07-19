@@ -1,16 +1,21 @@
 import json
 import os
+import tornado.web
 from app.controllers.base import AdminBaseHandler
 from app.models.system_settings import SystemSettings
 from app.models.db import init_db
 
 class SystemSettingsHandler(AdminBaseHandler):
+    REQUIRED_FUNCTION = "system"
+    @tornado.web.authenticated
     def get(self):
         settings = SystemSettings.get_settings()
         title = '系统设置 - ' + settings.get('system_name', '智能瞭望与智能问数系统')
         self.render('admin/system_settings.html', title=title, username=self.current_user, settings=settings)
 
 class SystemSettingsSaveHandler(AdminBaseHandler):
+    REQUIRED_FUNCTION = "system"
+    @tornado.web.authenticated
     def post(self):
         try:
             data = json.loads(self.request.body)
@@ -40,6 +45,8 @@ class SystemSettingsSaveHandler(AdminBaseHandler):
             })
 
 class SystemSettingsLogoUploadHandler(AdminBaseHandler):
+    REQUIRED_FUNCTION = "system"
+    @tornado.web.authenticated
     def post(self):
         try:
             file_metas = self.request.files.get('logo', None)

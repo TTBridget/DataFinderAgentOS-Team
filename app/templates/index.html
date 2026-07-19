@@ -1954,7 +1954,7 @@ function renderCard(card_type, card_data){
     } else if(card_type === 'table'){
         return renderTableCard(card_data);
     } else if(card_type === 'html'){
-        return '<div class="card-html">' + (card_data.html || '') + '</div>';
+        return '<div class="card-html"><pre style="background:#f8f9fa;padding:12px;border-radius:6px;font-size:13px;white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;">' + escapeHtml(card_data.html || '') + '</pre></div>';
     }
     return '';
 }
@@ -2092,15 +2092,15 @@ function renderWeatherCard(data){
             '<div class="weather-icon">' + icon + '</div>' +
             '<div class="weather-info">' +
                 '<div class="weather-city">' + escapeHtml(data.city) + '</div>' +
-                '<div class="weather-temp">' + data.temperature + '°C</div>' +
+                '<div class="weather-temp">' + escapeHtml(data.temperature) + '°C</div>' +
                 '<div class="weather-desc">' + escapeHtml(data.description) + '</div>' +
             '</div>' +
         '</div>' +
         '<div class="weather-details">' +
-            '<div class="weather-detail"><span>体感</span><strong>' + data.feels_like + '°C</strong></div>' +
-            '<div class="weather-detail"><span>湿度</span><strong>' + data.humidity + '%</strong></div>' +
-            '<div class="weather-detail"><span>风速</span><strong>' + data.wind_speed + 'km/h</strong></div>' +
-            '<div class="weather-detail"><span>气压</span><strong>' + data.pressure + 'hPa</strong></div>' +
+            '<div class="weather-detail"><span>体感</span><strong>' + escapeHtml(data.feels_like) + '°C</strong></div>' +
+            '<div class="weather-detail"><span>湿度</span><strong>' + escapeHtml(data.humidity) + '%</strong></div>' +
+            '<div class="weather-detail"><span>风速</span><strong>' + escapeHtml(data.wind_speed) + 'km/h</strong></div>' +
+            '<div class="weather-detail"><span>气压</span><strong>' + escapeHtml(data.pressure) + 'hPa</strong></div>' +
         '</div>' +
     '</div>';
 }
